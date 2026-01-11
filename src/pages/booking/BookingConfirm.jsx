@@ -434,6 +434,7 @@ export default function BookingConfirm() {
   const [loading, setLoading] = useState(true);
   const [booking, setBooking] = useState(null);
   const [error, setError] = useState("");
+  const [recommendations, setRecommendations] = useState({ activities: [], places: [] });
 
   useEffect(() => {
     let mounted = true;
@@ -463,6 +464,27 @@ export default function BookingConfirm() {
     };
   }, [id]);
 
+  // Fetch recommendations
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      if (!id || !booking) return;
+
+      try {
+        const r = await api.get(`/bookings/${id}/recommendations`, { silenceToast: true });
+        const data = r?.data?.data || {};
+        if (mounted) {
+          setRecommendations(data);
+        }
+      } catch (e) {
+        console.error("Failed to load recommendations:", e);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [id, booking]);
+
   const share = async () => {
     try {
       if (navigator.share) {
@@ -479,9 +501,37 @@ export default function BookingConfirm() {
     }
   };
 
-  const downloadReceipt = () => {
-    toast.success("Receipt download started");
-    // Implement receipt download logic here
+  const downloadReceipt = async () => {
+    try {
+      toast.loading("Generating your receipt...");
+
+      const response = await api.get(`/bookings/${id}/receipt`, {
+        responseType: 'blob',
+        silenceToast: true
+      });
+
+      // Create a blob from the PDF data
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+
+      // Create a download link and trigger it
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `booking-receipt-${id}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+
+      // Cleanup
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      toast.dismiss();
+      toast.success("Receipt downloaded successfully!");
+    } catch (error) {
+      console.error('Download error:', error);
+      toast.dismiss();
+      toast.error("Failed to download receipt. Please try again.");
+    }
   };
 
   if (loading) {
@@ -772,6 +822,117 @@ export default function BookingConfirm() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Recommendations Section */}
+        {(recommendations.activities.length > 0 || recommendations.places.length > 0) && (
+          <Card className="mb-8 border-0 shadow-md">
+            <CardContent className="p-6">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-primary-600" />
+                You Might Also Like
+              </h3>
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {recommendations.activities.map((activity) => (
+                  <Link
+                    key={activity._id || activity.id}
+                    to={`/activities/${activity._id || activity.id}`}
+                    className="group block border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden hover:border-primary-500 dark:hover:border-primary-500 transition-all hover:shadow-md"
+                  >
+                    <div className="aspect-[4/3] bg-gradient-to-br from-primary-100 to-blue-100 dark:from-primary-900/20 dark:to-blue-900/20 relative overflow-hidden">
+                      {activity.images && activity.images[0] ? (
+                        <img
+                          src={activity.images[0]}
+                          alt={activity.title || activity.name}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-5xl">
+                          🎯
+                        </div>
+                      )}
+                      {activity.rating?.avg && (
+                        <div className="absolute top-2 right-2 bg-white dark:bg-gray-900 rounded-full px-2 py-1 text-xs font-medium flex items-center gap-1 shadow-md">
+                          <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                          {Number(activity.rating.avg).toFixed(1)}
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-3">
+                      <h4 className="font-semibold text-gray-900 dark:text-white text-sm mb-1 line-clamp-2 group-hover:text-primary-600 dark:group-hover:text-primary-400">
+                        {activity.title || activity.name}
+                      </h4>
+                      <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
+                        {activity.city && (
+                          <span className="flex items-center gap-1">
+                            <MapPin className="h-3 w-3" />
+                            {activity.city}
+                          </span>
+                        )}
+                        {activity.duration && (
+                          <span className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {activity.duration}
+                          </span>
+                        )}
+                      </div>
+                      {(activity.price || activity.basePrice) && (
+                        <p className="mt-2 font-bold text-primary-600 dark:text-primary-400">
+                          {INR(activity.price || activity.basePrice)}
+                        </p>
+                      )}
+                    </div>
+                  </Link>
+                ))}
+
+                {recommendations.places.map((place) => (
+                  <Link
+                    key={place._id || place.id}
+                    to={`/places/${place._id || place.id}`}
+                    className="group block border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden hover:border-primary-500 dark:hover:border-primary-500 transition-all hover:shadow-md"
+                  >
+                    <div className="aspect-[4/3] bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-900/20 dark:to-teal-900/20 relative overflow-hidden">
+                      {place.images && place.images[0] ? (
+                        <img
+                          src={place.images[0]}
+                          alt={place.title || place.name}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-5xl">
+                          📍
+                        </div>
+                      )}
+                      {place.rating?.avg && (
+                        <div className="absolute top-2 right-2 bg-white dark:bg-gray-900 rounded-full px-2 py-1 text-xs font-medium flex items-center gap-1 shadow-md">
+                          <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                          {Number(place.rating.avg).toFixed(1)}
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-3">
+                      <h4 className="font-semibold text-gray-900 dark:text-white text-sm mb-1 line-clamp-2 group-hover:text-primary-600 dark:group-hover:text-primary-400">
+                        {place.title || place.name}
+                      </h4>
+                      <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
+                        {place.city && (
+                          <span className="flex items-center gap-1">
+                            <MapPin className="h-3 w-3" />
+                            {place.city}
+                          </span>
+                        )}
+                      </div>
+                      {(place.price || place.basePrice) && (
+                        <p className="mt-2 font-bold text-emerald-600 dark:text-emerald-400">
+                          {INR(place.price || place.basePrice)}
+                        </p>
+                      )}
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* CTA Section */}
         <div className="text-center">
