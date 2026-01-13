@@ -1,7 +1,7 @@
 import React, { Suspense } from "react";
 import { Outlet, useLocation } from "react-router-dom";
-import Header from "./Header";
-import Footer from "./Footer";
+import ProfessionalHeader from "./ProfessionalHeader";
+import ProfessionalFooter from "./ProfessionalFooter";
 
 // Loading component for Suspense fallback
 function PageLoader() {
@@ -77,10 +77,10 @@ export default function Layout({
   
   return (
     <ErrorBoundary>
-      <div className={`min-h-screen flex flex-col bg-white dark:bg-gray-900 ${className}`}>
+      <div className={`public-shell min-h-screen flex flex-col ${className}`}>
         
         {/* Header */}
-        {showHeader && <Header />}
+        {showHeader && <ProfessionalHeader />}
         
         {/* Main Content */}
         <main className="flex-1" role="main">
@@ -91,7 +91,7 @@ export default function Layout({
         </main>
         
         {/* Footer */}
-        {shouldShowFooter && <Footer />}
+        {shouldShowFooter && <ProfessionalFooter />}
       </div>
     </ErrorBoundary>
   );

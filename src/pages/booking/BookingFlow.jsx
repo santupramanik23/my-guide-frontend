@@ -425,7 +425,7 @@ const INR = (n) => new Intl.NumberFormat("en-IN", {
 }).format(Number(n || 0));
 
 const fmtDuration = (m) => {
-  if (!m) return "—";
+  if (!m) return "N/A";
   if (m < 60) return `${m}m`;
   const h = Math.floor(m / 60), r = m % 60;
   return r ? `${h}h ${r}m` : `${h}h`;
@@ -692,7 +692,7 @@ export default function BookingFlow() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 grid place-items-center">
+      <div className="min-h-screen bg-transparent grid place-items-center">
         <div className="text-center">
           <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-primary-600" />
           <p className="text-gray-600 dark:text-gray-400">Loading details...</p>
@@ -727,7 +727,7 @@ export default function BookingFlow() {
   const rating = item?.rating?.avg;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
+    <div className="min-h-screen bg-transparent py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <Link
           to={itemType === "place" ? `/places/${itemId}` : `/activities/${itemId}`}
@@ -786,11 +786,15 @@ export default function BookingFlow() {
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
             {/* Item summary */}
-            <Card>
+            <Card className="border-purple-100/70 dark:border-[#2a1a45] bg-white/90 dark:bg-[#1a1230]/90 backdrop-blur shadow-lg">
               <CardContent className="p-6">
                 <div className="flex gap-4">
-                  <div className="w-20 h-20 rounded-lg bg-gradient-to-br from-primary-100 to-primary-200 dark:from-primary-900/20 dark:to-primary-800/20 grid place-items-center text-3xl">
-                    {itemType === "place" ? "📍" : "🎯"}
+                  <div className="w-20 h-20 rounded-lg bg-gradient-to-br from-primary-100 to-primary-200 dark:from-primary-900/20 dark:to-primary-800/20 grid place-items-center">
+                    {itemType === "place" ? (
+                      <MapPin className="h-8 w-8 text-primary-600" />
+                    ) : (
+                      <Star className="h-8 w-8 text-amber-500" />
+                    )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-2">{title}</h2>
@@ -829,7 +833,7 @@ export default function BookingFlow() {
             )}
 
             {/* Step card */}
-            <Card>
+            <Card className="border-purple-100/70 dark:border-[#2a1a45] bg-white/90 dark:bg-[#1a1230]/90 backdrop-blur shadow-lg">
               <CardContent className="p-6 space-y-6">
                 {step === 0 && (
                   <div className="space-y-6">
@@ -977,7 +981,7 @@ export default function BookingFlow() {
                                 month: "short",
                                 year: "numeric",
                               })
-                            : "—"}
+                            : "N/A"}
                         </span>
                       </div>
                       <div className="flex items-center justify-between">
@@ -985,7 +989,7 @@ export default function BookingFlow() {
                         <span className="font-medium">{guests}</span>
                       </div>
                       <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg p-3">
-                        <CheckCircle2 className="h-4 w-4" /> Reserve now & pay later — no payment today.
+                        <CheckCircle2 className="h-4 w-4" /> Reserve now & pay later - no payment today.
                       </div>
                       <label className="flex items-start gap-3">
                         <input
@@ -1042,7 +1046,7 @@ export default function BookingFlow() {
           {/* Right rail summary */}
           <div className="lg:col-span-1">
             <div className="lg:sticky lg:top-6 space-y-6">
-              <Card className="shadow-lg">
+              <Card className="border-purple-100/70 dark:border-[#2a1a45] bg-white/90 dark:bg-[#1a1230]/90 backdrop-blur shadow-lg">
                 <CardContent className="p-6 space-y-4">
                   <div className="flex items-center justify-between">
                     <h3 className="text-base font-semibold dark:text-white">Order Summary</h3>
@@ -1051,7 +1055,7 @@ export default function BookingFlow() {
                   <div className="text-sm text-gray-700 dark:text-gray-300">
                     <div className="flex items-center justify-between py-1">
                       <span>
-                        {INR(pricing.base)} × {pricing.g} {pricing.g > 1 ? "guests" : "guest"}
+                        {INR(pricing.base)} x {pricing.g} {pricing.g > 1 ? "guests" : "guest"}
                       </span>
                       <span className="font-medium">{INR(pricing.subtotal)}</span>
                     </div>
@@ -1066,7 +1070,7 @@ export default function BookingFlow() {
                     {pricing.promoOff > 0 && (
                       <div className="flex items-center justify-between py-1">
                         <span className="inline-flex items-center gap-1">Promo</span>
-                        <span className="font-medium text-emerald-700">−{INR(pricing.promoOff)}</span>
+                        <span className="font-medium text-emerald-700">-{INR(pricing.promoOff)}</span>
                       </div>
                     )}
                     <div className="border-t border-gray-200 dark:border-gray-700 my-2" />

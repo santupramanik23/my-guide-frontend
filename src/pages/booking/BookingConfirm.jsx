@@ -36,7 +36,7 @@
 //         month: "long",
 //         year: "numeric"
 //       })
-//     : "—";
+//     : "N/A";
 
 // export default function BookingConfirm() {
 //   const [p] = useSearchParams();
@@ -87,7 +87,7 @@
 
 //   if (loading) {
 //     return (
-//       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 grid place-items-center">
+//       <div className="min-h-screen bg-transparent grid place-items-center">
 //         <div className="text-center">
 //           <Loader2 className="h-12 w-12 animate-spin text-primary-600 mx-auto mb-4" />
 //           <p className="text-gray-600 dark:text-gray-400">Loading your booking...</p>
@@ -98,10 +98,10 @@
 
 //   if (error || !booking) {
 //     return (
-//       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 grid place-items-center px-4">
+//       <div className="min-h-screen bg-transparent grid place-items-center px-4">
 //         <div className="text-center max-w-md">
 //           <div className="w-16 h-16 bg-rose-100 dark:bg-rose-900/20 rounded-full grid place-items-center mx-auto mb-4">
-//             ❌
+//             
 //           </div>
 //           <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
 //             Booking Not Found
@@ -129,7 +129,7 @@
 //   const duration = activity.duration || place.duration;
 //   const rating = activity?.rating?.avg;
   
-//   // ✅ Fixed: Use correct field names
+//   //  Fixed: Use correct field names
 //   const customer =
 //     (booking.participantDetails && booking.participantDetails[0]) ||
 //     booking.customer ||
@@ -138,7 +138,7 @@
 //   const total = booking.totalAmount || booking?.pricing?.total || booking.amount || 0;
 
 //   return (
-//     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
+//     <div className="min-h-screen bg-transparent py-8">
 //       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         
 //         {/* Success Header */}
@@ -146,8 +146,7 @@
 //           <div className="w-20 h-20 bg-emerald-100 dark:bg-emerald-900/20 rounded-full grid place-items-center mx-auto mb-4 animate-bounce">
 //             <CheckCircle2 className="h-10 w-10 text-emerald-600 dark:text-emerald-400" />
 //           </div>
-//           <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-//             🎉 Booking Confirmed!
+//           <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Booking Confirmed!
 //           </h1>
 //           <p className="text-gray-600 dark:text-gray-400">
 //             Your reservation has been successfully created
@@ -164,7 +163,7 @@
 //         <div className="grid lg:grid-cols-3 gap-6 mb-8">
           
 //           {/* Left Column - Booking Details */}
-//           <Card className="lg:col-span-2 border-0 shadow-md">
+//           <Card className="lg:col-span-2 border-purple-100/70 dark:border-[#2a1a45] bg-white/90 dark:bg-[#1a1230]/90 backdrop-blur shadow-lg">
 //             <CardContent className="p-6 space-y-6">
 //               <h2 className="text-xl font-bold text-gray-900 dark:text-white">
 //                 Booking Details
@@ -173,7 +172,7 @@
 //               {/* Activity/Place Card */}
 //               <div className="flex gap-4 p-4 bg-gradient-to-r from-primary-50 to-blue-50 dark:from-primary-900/20 dark:to-blue-900/20 rounded-xl border border-primary-100 dark:border-primary-800">
 //                 <div className="w-20 h-20 rounded-xl bg-gradient-to-br from-primary-100 to-primary-200 dark:from-primary-900/20 dark:to-primary-800/20 grid place-items-center text-3xl flex-shrink-0">
-//                   {place?.title || place?.name ? "📍" : "🎯"}
+//                   {place?.title || place?.name ? "" : ""}
 //                 </div>
 //                 <div className="flex-1 min-w-0">
 //                   <h3 className="font-semibold text-lg text-gray-900 dark:text-white mb-2">
@@ -233,7 +232,7 @@
 //                     <span className="text-sm font-medium">Email</span>
 //                   </div>
 //                   <p className="font-semibold text-gray-900 dark:text-white truncate">
-//                     {customer.email || "—"}
+//                     {customer.email || ""}
 //                   </p>
 //                 </div>
 
@@ -243,7 +242,7 @@
 //                     <span className="text-sm font-medium">Phone</span>
 //                   </div>
 //                   <p className="font-semibold text-gray-900 dark:text-white">
-//                     {customer.phone || "—"}
+//                     {customer.phone || ""}
 //                   </p>
 //                 </div>
 //               </div>
@@ -263,7 +262,7 @@
 //           </Card>
 
 //           {/* Right Column - Price Summary */}
-//           <Card className="border-0 shadow-lg">
+//           <Card className="border-purple-100/70 dark:border-[#2a1a45] bg-white/90 dark:bg-[#1a1230]/90 backdrop-blur shadow-lg">
 //             <CardContent className="p-6 space-y-4">
 //               <h3 className="text-base font-semibold dark:text-white">
 //                 Price Summary
@@ -330,10 +329,9 @@
 //         </div>
 
 //         {/* What's Next Section */}
-//         <Card className="mb-8 border-0 shadow-md bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20">
+//         <Card className="mb-8 border-purple-100/70 dark:border-[#2a1a45] bg-white/90 dark:bg-[#1a1230]/90 backdrop-blur shadow-lg">
 //           <CardContent className="p-6">
-//             <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
-//               📧 What happens next?
+//             <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">What happens next?
 //             </h3>
 //             <div className="space-y-3 text-sm text-gray-700 dark:text-gray-300">
 //               <div className="flex items-start gap-3">
@@ -404,7 +402,8 @@ import {
   ArrowRight,
   Sparkles,
   Star,
-  Info
+  Info,
+  AlertTriangle
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
@@ -426,7 +425,7 @@ const fmtDate = (d) =>
         month: "long",
         year: "numeric"
       })
-    : "—";
+    : "";
 
 export default function BookingConfirm() {
   const [p] = useSearchParams();
@@ -536,7 +535,7 @@ export default function BookingConfirm() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 grid place-items-center">
+      <div className="min-h-screen bg-transparent grid place-items-center">
         <div className="text-center">
           <Loader2 className="h-12 w-12 animate-spin text-primary-600 mx-auto mb-4" />
           <p className="text-gray-600 dark:text-gray-400">Loading your booking...</p>
@@ -547,10 +546,10 @@ export default function BookingConfirm() {
 
   if (error || !booking) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 grid place-items-center px-4">
+      <div className="min-h-screen bg-transparent grid place-items-center px-4">
         <div className="text-center max-w-md">
           <div className="w-16 h-16 bg-rose-100 dark:bg-rose-900/20 rounded-full grid place-items-center mx-auto mb-4">
-            ❌
+            <AlertTriangle className="h-8 w-8 text-rose-600 dark:text-rose-400" />
           </div>
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
             Booking Not Found
@@ -588,7 +587,7 @@ export default function BookingConfirm() {
   const total = booking.totalAmount || booking?.pricing?.total || booking.amount || 0;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
+    <div className="min-h-screen bg-transparent py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Success Header */}
@@ -597,7 +596,7 @@ export default function BookingConfirm() {
             <CheckCircle2 className="h-10 w-10 text-emerald-600 dark:text-emerald-400" />
           </div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-            🎉 Booking Confirmed!
+             Booking Confirmed!
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
             Your reservation has been successfully created
@@ -614,7 +613,7 @@ export default function BookingConfirm() {
         <div className="grid lg:grid-cols-3 gap-6 mb-8">
           
           {/* Left Column - Booking Details */}
-          <Card className="lg:col-span-2 border-0 shadow-md">
+          <Card className="lg:col-span-2 border-purple-100/70 dark:border-[#2a1a45] bg-white/90 dark:bg-[#1a1230]/90 backdrop-blur shadow-lg">
             <CardContent className="p-6 space-y-6">
               <h2 className="text-xl font-bold text-gray-900 dark:text-white">
                 Booking Details
@@ -622,8 +621,12 @@ export default function BookingConfirm() {
 
               {/* Activity/Place Card */}
               <div className="flex gap-4 p-4 bg-gradient-to-r from-primary-50 to-blue-50 dark:from-primary-900/20 dark:to-blue-900/20 rounded-xl border border-primary-100 dark:border-primary-800">
-                <div className="w-20 h-20 rounded-xl bg-gradient-to-br from-primary-100 to-primary-200 dark:from-primary-900/20 dark:to-primary-800/20 grid place-items-center text-3xl flex-shrink-0">
-                  {place?.title || place?.name ? "📍" : "🎯"}
+                <div className="w-20 h-20 rounded-xl bg-gradient-to-br from-primary-100 to-primary-200 dark:from-primary-900/20 dark:to-primary-800/20 grid place-items-center flex-shrink-0">
+                  {place?.title || place?.name ? (
+                    <MapPin className="h-8 w-8 text-primary-600" />
+                  ) : (
+                    <Star className="h-8 w-8 text-amber-500" />
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <h3 className="font-semibold text-lg text-gray-900 dark:text-white mb-2">
@@ -683,7 +686,7 @@ export default function BookingConfirm() {
                     <span className="text-sm font-medium">Email</span>
                   </div>
                   <p className="font-semibold text-gray-900 dark:text-white truncate">
-                    {customer.email || "—"}
+                    {customer.email || "N/A"}
                   </p>
                 </div>
 
@@ -693,7 +696,7 @@ export default function BookingConfirm() {
                     <span className="text-sm font-medium">Phone</span>
                   </div>
                   <p className="font-semibold text-gray-900 dark:text-white">
-                    {customer.phone || "—"}
+                    {customer.phone || "N/A"}
                   </p>
                 </div>
               </div>
@@ -713,7 +716,7 @@ export default function BookingConfirm() {
           </Card>
 
           {/* Right Column - Price Summary */}
-          <Card className="border-0 shadow-lg">
+          <Card className="border-purple-100/70 dark:border-[#2a1a45] bg-white/90 dark:bg-[#1a1230]/90 backdrop-blur shadow-lg">
             <CardContent className="p-6 space-y-4">
               <h3 className="text-base font-semibold dark:text-white">
                 Price Summary
@@ -780,10 +783,10 @@ export default function BookingConfirm() {
         </div>
 
         {/* What's Next Section */}
-        <Card className="mb-8 border-0 shadow-md bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20">
+        <Card className="mb-8 border-purple-100/70 dark:border-[#2a1a45] bg-white/90 dark:bg-[#1a1230]/90 backdrop-blur shadow-lg">
           <CardContent className="p-6">
             <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
-              📧 What happens next?
+               What happens next?
             </h3>
             <div className="space-y-3 text-sm text-gray-700 dark:text-gray-300">
               <div className="flex items-start gap-3">
@@ -825,7 +828,7 @@ export default function BookingConfirm() {
 
         {/* Recommendations Section */}
         {(recommendations.activities.length > 0 || recommendations.places.length > 0) && (
-          <Card className="mb-8 border-0 shadow-md">
+          <Card className="mb-8 border-purple-100/70 dark:border-[#2a1a45] bg-white/90 dark:bg-[#1a1230]/90 backdrop-blur shadow-lg">
             <CardContent className="p-6">
               <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
                 <Sparkles className="h-5 w-5 text-primary-600" />
@@ -846,8 +849,8 @@ export default function BookingConfirm() {
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center text-5xl">
-                          🎯
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Star className="h-10 w-10 text-primary-600" />
                         </div>
                       )}
                       {activity.rating?.avg && (
@@ -898,8 +901,8 @@ export default function BookingConfirm() {
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center text-5xl">
-                          📍
+                        <div className="w-full h-full flex items-center justify-center">
+                          <MapPin className="h-10 w-10 text-primary-600" />
                         </div>
                       )}
                       {place.rating?.avg && (

@@ -16,7 +16,8 @@ import {
   Sparkles,
   Star,
   Receipt,
-  FileText
+  FileText,
+  MessageSquare
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
@@ -38,7 +39,7 @@ const fmtDate = (d) =>
         month: "long",
         year: "numeric"
       })
-    : "—";
+    : "N/A";
 
 export default function PaymentSuccess() {
   const [searchParams] = useSearchParams();
@@ -137,7 +138,7 @@ export default function PaymentSuccess() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 grid place-items-center">
+      <div className="min-h-screen bg-transparent grid place-items-center">
         <div className="text-center">
           <Loader2 className="h-12 w-12 animate-spin text-green-600 mx-auto mb-4" />
           <p className="text-gray-600 dark:text-gray-400">
@@ -151,10 +152,10 @@ export default function PaymentSuccess() {
   if (error || !booking) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 grid place-items-center p-4">
-        <Card className="max-w-md w-full">
+        <Card className="max-w-md w-full border-purple-100/70 dark:border-[#2a1a45] bg-white/90 dark:bg-[#1a1230]/90 backdrop-blur shadow-lg">
           <CardContent className="p-8 text-center">
             <div className="h-16 w-16 rounded-full bg-red-100 dark:bg-red-900/30 grid place-items-center mx-auto mb-4">
-              <span className="text-3xl">✕</span>
+              <span className="text-3xl"></span>
             </div>
             <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
               Payment Confirmation Failed
@@ -174,7 +175,7 @@ export default function PaymentSuccess() {
   const item = booking.activity || booking.place;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800">
+    <div className="min-h-screen bg-transparent">
       <div className="max-w-4xl mx-auto px-4 py-8 sm:py-12">
         {/* Success Banner */}
         <div className="text-center mb-8 animate-fade-in">
@@ -190,7 +191,7 @@ export default function PaymentSuccess() {
         </div>
 
         {/* Transaction Info Banner */}
-        <div className="mb-6 p-4 bg-white dark:bg-gray-800 rounded-lg border-l-4 border-green-500 shadow-sm">
+        <div className="mb-6 p-4 bg-white/90 dark:bg-[#1a1230]/90 backdrop-blur rounded-lg border-l-4 border-green-500 shadow-sm">
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div className="flex items-center gap-3">
               <Receipt className="h-5 w-5 text-green-600 dark:text-green-400" />
@@ -203,7 +204,7 @@ export default function PaymentSuccess() {
             </div>
             <div className="flex items-center gap-2">
               <span className="px-3 py-1 bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 text-xs font-semibold rounded-full">
-                ✓ PAID
+                 PAID
               </span>
             </div>
           </div>
@@ -213,7 +214,7 @@ export default function PaymentSuccess() {
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
             {/* Booking Details Card */}
-            <Card>
+            <Card className="border-purple-100/70 dark:border-[#2a1a45] bg-white/90 dark:bg-[#1a1230]/90 backdrop-blur shadow-lg">
               <CardContent className="p-6">
                 <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
                   <Sparkles className="h-5 w-5 text-green-600" />
@@ -331,7 +332,7 @@ export default function PaymentSuccess() {
             </Card>
 
             {/* What's Next Card */}
-            <Card>
+            <Card className="border-purple-100/70 dark:border-[#2a1a45] bg-white/90 dark:bg-[#1a1230]/90 backdrop-blur shadow-lg">
               <CardContent className="p-6">
                 <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
                   What happens next?
@@ -386,7 +387,7 @@ export default function PaymentSuccess() {
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Payment Summary */}
-            <Card>
+            <Card className="border-purple-100/70 dark:border-[#2a1a45] bg-white/90 dark:bg-[#1a1230]/90 backdrop-blur shadow-lg">
               <CardContent className="p-6">
                 <h3 className="font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
                   <CreditCard className="h-5 w-5" />
@@ -433,7 +434,7 @@ export default function PaymentSuccess() {
             </Card>
 
             {/* Quick Actions */}
-            <Card>
+            <Card className="border-purple-100/70 dark:border-[#2a1a45] bg-white/90 dark:bg-[#1a1230]/90 backdrop-blur shadow-lg">
               <CardContent className="p-6 space-y-3">
                 <Button
                   onClick={downloadReceipt}

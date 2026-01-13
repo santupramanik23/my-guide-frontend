@@ -4,18 +4,22 @@ export default {
   darkMode: 'class', // ✅ Enable dark mode
   theme: {
     extend: {
+      fontFamily: {
+        display: ['"Playfair Display"', "serif"],
+        body: ['"Manrope"', "sans-serif"],
+      },
       colors: {
         primary: {
-          50: '#f5f3ff',
-          100: '#ede9fe',
-          200: '#ddd6fe',
-          300: '#c4b5fd',
-          400: '#a78bfa',
-          500: '#8b5cf6',
-          600: '#7c3aed',
-          700: '#6d28d9',
-          800: '#5b21b6',
-          900: '#4c1d95',
+          50: '#f6f1ff',
+          100: '#ece0ff',
+          200: '#dcc3ff',
+          300: '#c6a0ff',
+          400: '#ad78ff',
+          500: '#9150f2',
+          600: '#7000c0',
+          700: '#5c009e',
+          800: '#49007c',
+          900: '#36005b',
         },
         secondary: {
           50: '#ecfdf5',
