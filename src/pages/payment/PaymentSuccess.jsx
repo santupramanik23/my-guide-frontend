@@ -404,6 +404,15 @@ export default function PaymentSuccess() {
                         <span className="text-gray-600 dark:text-gray-400">Subtotal ({booking.participants}x)</span>
                         <span className="text-gray-900 dark:text-white">{INR(booking.pricing.subtotal)}</span>
                       </div>
+                      {booking.pricing.groupDiscount > 0 && (
+                        <div className="flex justify-between text-green-600 dark:text-green-400">
+                          <span>
+                            Group discount
+                            {booking.pricing.groupDiscountRate ? ` (${Math.round(booking.pricing.groupDiscountRate * 100)}%)` : ""}
+                          </span>
+                          <span>-{INR(booking.pricing.groupDiscount)}</span>
+                        </div>
+                      )}
                       <div className="flex justify-between">
                         <span className="text-gray-600 dark:text-gray-400">Tax (18%)</span>
                         <span className="text-gray-900 dark:text-white">{INR(booking.pricing.tax)}</span>
@@ -412,10 +421,10 @@ export default function PaymentSuccess() {
                         <span className="text-gray-600 dark:text-gray-400">Service Fee</span>
                         <span className="text-gray-900 dark:text-white">{INR(booking.pricing.serviceFee)}</span>
                       </div>
-                      {booking.pricing.promoOff > 0 && (
+                      {booking.pricing.promoDiscount > 0 && (
                         <div className="flex justify-between text-green-600 dark:text-green-400">
-                          <span>Discount</span>
-                          <span>-{INR(booking.pricing.promoOff)}</span>
+                          <span>Promo discount{booking.pricing.promoCode ? ` (${booking.pricing.promoCode})` : ""}</span>
+                          <span>-{INR(booking.pricing.promoDiscount)}</span>
                         </div>
                       )}
                       <div className="pt-3 border-t border-gray-200 dark:border-gray-700 flex justify-between font-bold text-base">

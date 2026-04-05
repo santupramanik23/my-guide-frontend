@@ -202,7 +202,7 @@ export default function ActivityDetail() {
   const displayDuration = duration || (durationMinutes ? formatDuration(durationMinutes) : null);
   const rawPrice = price || basePrice || 0;
   const displayPrice = formatINR(rawPrice);
-  const guestText = capacity ? `Up to ${capacity} guests` : "Up to 10 guests";
+  const guestText = capacity ? `Up to ${capacity} guests` : "Up to 50 guests";
   const reviews = activity?.reviews?.length ? activity.reviews : MOCK_REVIEWS;
   const reviewCount = totalReviews || rating?.count || reviews.length;
   const baseRating =

@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import DatePicker from "@/components/ui/DatePicker";
 import { api, useAuthStore } from "@/store/auth";
-import { initiateRazorpayPayment } from "@/utils/razorpayUtils";
+import { initiateRazorpayPayment, loadRazorpayScript } from "@/utils/razorpayUtils";
 import toast from "react-hot-toast";
 
 /* ── helpers ─────────────────────────────────────────────────────────────── */
@@ -27,6 +27,20 @@ const fmtDuration = (m) => {
 const todayISO = () => new Date().toISOString().split("T")[0];
 
 const PROMO_CODES = { WELCOME10: 0.10, SAVE5: 0.05 };
+const DEFAULT_MAX_GUESTS = 50;
+const GUEST_RANGE_STEPS = [
+  { min: 1, max: 5 },
+  { min: 6, max: 10 },
+  { min: 11, max: 20 },
+  { min: 21, max: 50 },
+];
+
+function getGroupDiscountMeta(guests) {
+  if (guests >= 21) return { rate: 0.15, label: "Large group discount (15%)" };
+  if (guests >= 11) return { rate: 0.10, label: "Team booking discount (10%)" };
+  if (guests >= 5) return { rate: 0.05, label: "Small group discount (5%)" };
+  return { rate: 0, label: "" };
+}
 
 /* ── component ───────────────────────────────────────────────────────────── */
 export default function BookingFlow() {
@@ -64,14 +78,11 @@ export default function BookingFlow() {
       if (!itemId) { setError("No item selected."); setLoading(false); return; }
       try {
         setLoading(true); setError("");
-        let data;
-        try {
-          const r = await api.get(`/activities/${itemId}`);
-          data = r?.data?.data?.activity || r?.data?.data || r?.data;
-        } catch {
-          const r = await api.get(`/places/${itemId}`);
-          data = r?.data?.data?.place || r?.data?.data || r?.data;
-        }
+        const endpoint = itemType === "place" ? `/places/${itemId}` : `/activities/${itemId}`;
+        const r = await api.get(endpoint);
+        const data = itemType === "place"
+          ? (r?.data?.data?.place || r?.data?.data || r?.data)
+          : (r?.data?.data?.activity || r?.data?.data || r?.data);
         if (!cancelled) setItem(data);
       } catch {
         if (!cancelled) setError("Failed to load item details.");
@@ -80,7 +91,11 @@ export default function BookingFlow() {
       }
     })();
     return () => { cancelled = true; };
-  }, [itemId]);
+  }, [itemId, itemType]);
+
+  useEffect(() => {
+    loadRazorpayScript().catch(() => {});
+  }, []);
 
   /* pricing */
   const pricing = useMemo(() => {
@@ -89,20 +104,50 @@ export default function BookingFlow() {
                   : 99;
     const g        = Number(guests || 1);
     const subtotal = base * g;
+    const groupMeta = getGroupDiscountMeta(g);
+    const groupDiscount = groupMeta.rate ? Math.floor(subtotal * groupMeta.rate) : 0;
     const tax      = Math.round(subtotal * 0.18);
     const fee      = Math.round(subtotal * 0.05);
     const disc     = PROMO_CODES[promo.trim().toUpperCase()] || 0;
-    const promoOff = disc ? Math.floor(subtotal * disc) : 0;
-    const total    = Math.max(0, subtotal + tax + fee - promoOff);
-    return { base, g, subtotal, tax, fee, promoOff, total };
+    const promoDiscount = disc ? Math.floor(subtotal * disc) : 0;
+    const totalDiscount = groupDiscount + promoDiscount;
+    const total    = Math.max(0, subtotal + tax + fee - totalDiscount);
+    return {
+      base,
+      g,
+      subtotal,
+      tax,
+      fee,
+      groupDiscount,
+      groupDiscountRate: groupMeta.rate,
+      groupDiscountLabel: groupMeta.label,
+      promoCode: promo.trim().toUpperCase(),
+      promoDiscount,
+      promoOff: totalDiscount,
+      total,
+    };
   }, [item, guests, promo]);
 
   /* validation */
   const validDate    = !!date && date >= todayISO();
-  const validGuests  = Number(guests) >= 1;
+  const maxGuestsAllowed = useMemo(() => {
+    const configuredCapacity = Number(item?.capacity || item?.maxGuests);
+    return Number.isFinite(configuredCapacity) && configuredCapacity > 0
+      ? configuredCapacity
+      : DEFAULT_MAX_GUESTS;
+  }, [item]);
+  const guestCount = Number(guests);
+  const validGuests  = Number.isInteger(guestCount) && guestCount >= 1 && guestCount <= maxGuestsAllowed;
   const validContact = name.trim().length >= 2
     && /\S+@\S+\.\S+/.test(email)
     && phone.replace(/\D/g, "").length >= 10;
+
+  useEffect(() => {
+    const guestCount = Number(guests || 1);
+    if (guestCount > maxGuestsAllowed) {
+      setGuests(String(maxGuestsAllowed));
+    }
+  }, [guests, maxGuestsAllowed]);
 
   const canNext =
     step === 0 ? validDate && validGuests
@@ -133,6 +178,10 @@ export default function BookingFlow() {
         pricing: {
           basePrice:  pricing.base,
           subtotal:   pricing.subtotal,
+          groupDiscount: pricing.groupDiscount,
+          groupDiscountRate: pricing.groupDiscountRate,
+          promoCode: pricing.promoCode,
+          promoDiscount: pricing.promoDiscount,
           tax:        pricing.tax,
           serviceFee: pricing.fee,
           promoOff:   pricing.promoOff,
@@ -340,16 +389,48 @@ export default function BookingFlow() {
                         </label>
                         <div className="relative">
                           <Users className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                          <select
+                          <input
+                            type="number"
+                            min={1}
+                            max={maxGuestsAllowed}
+                            step={1}
                             value={guests}
                             onChange={(e) => setGuests(e.target.value)}
-                            className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent appearance-none dark:bg-gray-800 dark:text-white"
-                          >
-                            {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
-                              <option key={n} value={n}>{n} {n > 1 ? "guests" : "guest"}</option>
-                            ))}
-                          </select>
+                            className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-800 dark:text-white"
+                            placeholder={`Enter 1 to ${maxGuestsAllowed}`}
+                          />
                         </div>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {GUEST_RANGE_STEPS
+                            .filter((range) => range.min <= maxGuestsAllowed)
+                            .map((range) => {
+                              const rangeMax = Math.min(range.max, maxGuestsAllowed);
+                              const isActive = guestCount >= range.min && guestCount <= rangeMax;
+
+                              return (
+                                <button
+                                  key={`${range.min}-${range.max}`}
+                                  type="button"
+                                  onClick={() => setGuests(String(range.min))}
+                                  className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                                    isActive
+                                      ? "border-primary-600 bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-300"
+                                      : "border-gray-300 text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+                                  }`}
+                                >
+                                  {range.min}-{rangeMax} guests
+                                </button>
+                              );
+                            })}
+                        </div>
+                        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                          Enter the exact group size. Range buttons are shortcuts.
+                        </p>
+                        {!validGuests && guests !== "" ? (
+                          <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                            Guest count must be between 1 and {maxGuestsAllowed}.
+                          </p>
+                        ) : null}
                       </div>
                     </div>
 
@@ -360,6 +441,18 @@ export default function BookingFlow() {
                         <p>Free cancellation up to 24 hours before your activity starts.</p>
                       </div>
                     </div>
+
+                    {pricing.groupDiscount > 0 && (
+                      <div className="p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg flex gap-2">
+                        <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5" />
+                        <div className="text-sm text-emerald-800 dark:text-emerald-200">
+                          <p className="font-medium mb-1">{pricing.groupDiscountLabel}</p>
+                          <p>
+                            Your group of {pricing.g} gets an automatic saving of {INR(pricing.groupDiscount)}.
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -548,6 +641,12 @@ export default function BookingFlow() {
                       <span className="text-gray-500">{INR(pricing.base)} × {pricing.g} guest{pricing.g > 1 ? "s" : ""}</span>
                       <span className="font-medium">{INR(pricing.subtotal)}</span>
                     </div>
+                    {pricing.groupDiscount > 0 && (
+                      <div className="flex justify-between py-1 text-emerald-600 dark:text-emerald-400">
+                        <span>{pricing.groupDiscountLabel}</span>
+                        <span className="font-medium">−{INR(pricing.groupDiscount)}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between py-1">
                       <span className="text-gray-500">Tax (18%)</span>
                       <span className="font-medium">{INR(pricing.tax)}</span>
@@ -556,10 +655,10 @@ export default function BookingFlow() {
                       <span className="text-gray-500">Service fee (5%)</span>
                       <span className="font-medium">{INR(pricing.fee)}</span>
                     </div>
-                    {pricing.promoOff > 0 && (
+                    {pricing.promoDiscount > 0 && (
                       <div className="flex justify-between py-1 text-emerald-600 dark:text-emerald-400">
-                        <span>Promo discount</span>
-                        <span className="font-medium">−{INR(pricing.promoOff)}</span>
+                        <span>Promo discount{pricing.promoCode ? ` (${pricing.promoCode})` : ""}</span>
+                        <span className="font-medium">−{INR(pricing.promoDiscount)}</span>
                       </div>
                     )}
                     <div className="flex justify-between pt-3 mt-1 border-t border-gray-200 dark:border-gray-700 text-base font-bold text-gray-900 dark:text-white">

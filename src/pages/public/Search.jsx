@@ -5,9 +5,6 @@ import { useSearchParams, Link } from 'react-router-dom';
 import {
   Search as SearchIcon,
   SlidersHorizontal,
-  Grid3X3,
-  List,
-  ChevronDown,
   X,
   ArrowRight,
   MapPin,
@@ -117,6 +114,106 @@ const getValidImages = (images) => {
   return images.filter(img => img && typeof img === 'string' && img.trim() !== '');
 };
 
+const normalizeText = (value) => String(value || '').trim().toLowerCase();
+
+const getPlaceTitle = (place) => place?.title || place?.name || '';
+const getPlaceLocation = (place) => place?.city || place?.location?.city || place?.country || '';
+const getActivityLocation = (activity) => activity?.place?.city || activity?.city || activity?.place?.name || '';
+
+const getNumericRating = (item) => {
+  const rating = item?.averageRating ?? item?.rating?.avg ?? item?.rating;
+  const parsed = Number(rating);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const getNumericPrice = (activity) => {
+  const price = activity?.price ?? activity?.basePrice;
+  const parsed = Number(price);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const getNumericDuration = (activity) => {
+  const duration = activity?.durationMinutes ?? activity?.duration;
+  const parsed = Number(duration);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+function matchesQuery(item, type, q) {
+  const query = normalizeText(q);
+  if (!query) return true;
+
+  const haystack = type === 'place'
+    ? [
+        getPlaceTitle(item),
+        item?.description,
+        item?.category,
+        item?.city,
+        item?.country,
+        ...(Array.isArray(item?.tags) ? item.tags : []),
+      ]
+    : [
+        item?.title,
+        item?.description,
+        item?.category,
+        getActivityLocation(item),
+        item?.place?.name,
+        ...(Array.isArray(item?.tags) ? item.tags : []),
+      ];
+
+  return haystack.some((value) => normalizeText(value).includes(query));
+}
+
+function matchesCategory(item, category) {
+  if (!category) return true;
+  return normalizeText(item?.category) === normalizeText(category);
+}
+
+function matchesPrice(activity, priceRange) {
+  if (!priceRange) return true;
+  const price = getNumericPrice(activity);
+  if (price == null) return false;
+
+  const { minPrice, maxPrice } = toPriceMinMax(priceRange);
+  if (minPrice !== undefined && price < minPrice) return false;
+  if (maxPrice !== undefined && price > maxPrice) return false;
+  return true;
+}
+
+function matchesRating(item, rating) {
+  if (!rating) return true;
+  return getNumericRating(item) >= Number(rating);
+}
+
+function matchesDuration(activity, duration) {
+  if (!duration) return true;
+  const minutes = getNumericDuration(activity);
+  if (minutes == null) return false;
+
+  const { minDuration, maxDuration } = toDurationMinMax(duration);
+  if (minDuration !== undefined && minutes < minDuration) return false;
+  if (maxDuration !== undefined && minutes > maxDuration) return false;
+  return true;
+}
+
+function sortResults(items, type, sort) {
+  const list = [...items];
+  if (sort === 'price_asc') return list.sort((a, b) => (getNumericPrice(a) ?? Number.MAX_SAFE_INTEGER) - (getNumericPrice(b) ?? Number.MAX_SAFE_INTEGER));
+  if (sort === 'price_desc') return list.sort((a, b) => (getNumericPrice(b) ?? -1) - (getNumericPrice(a) ?? -1));
+  if (sort === 'rating_desc') return list.sort((a, b) => getNumericRating(b) - getNumericRating(a));
+  if (sort === 'popular') {
+    return list.sort((a, b) => {
+      const featuredDelta = Number(Boolean(b?.featured)) - Number(Boolean(a?.featured));
+      if (featuredDelta !== 0) return featuredDelta;
+      return getNumericRating(b) - getNumericRating(a);
+    });
+  }
+  if (sort === 'relevance') return list;
+
+  return type === 'place'
+    ? list.sort((a, b) => normalizeText(getPlaceTitle(a)).localeCompare(normalizeText(getPlaceTitle(b))))
+    : list.sort((a, b) => normalizeText(a?.title).localeCompare(normalizeText(b?.title)));
+}
+
 /* -------------------------------------------------------------------- */
 
 export default function Search() {
@@ -134,12 +231,8 @@ export default function Search() {
   // State management
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [results, setResults] = useState({ places: [], activities: [] });
-  const [totalResults, setTotalResults] = useState(0);
+  const [rawResults, setRawResults] = useState({ places: [], activities: [] });
   const [showFilters, setShowFilters] = useState(false);
-
-  const [viewMode, setViewMode] = useState(() => localStorage.getItem('viewMode') || 'grid');
-  useEffect(() => localStorage.setItem('viewMode', viewMode), [viewMode]);
 
   const [filters, setFilters] = useState({
     q: query,
@@ -152,6 +245,44 @@ export default function Search() {
   });
   
   const [appliedFilters, setAppliedFilters] = useState(filters);
+
+  useEffect(() => {
+    const nextFilters = {
+      q: query,
+      type: typeParam,
+      category: categoryParam,
+      priceRange: priceParam,
+      rating: ratingParam,
+      duration: durationParam,
+      sort: sortParam,
+    };
+
+    setFilters((current) => {
+      const isSame =
+        current.q === nextFilters.q &&
+        current.type === nextFilters.type &&
+        current.category === nextFilters.category &&
+        current.priceRange === nextFilters.priceRange &&
+        current.rating === nextFilters.rating &&
+        current.duration === nextFilters.duration &&
+        current.sort === nextFilters.sort;
+
+      return isSame ? current : nextFilters;
+    });
+
+    setAppliedFilters((current) => {
+      const isSame =
+        current.q === nextFilters.q &&
+        current.type === nextFilters.type &&
+        current.category === nextFilters.category &&
+        current.priceRange === nextFilters.priceRange &&
+        current.rating === nextFilters.rating &&
+        current.duration === nextFilters.duration &&
+        current.sort === nextFilters.sort;
+
+      return isSame ? current : nextFilters;
+    });
+  }, [query, typeParam, categoryParam, priceParam, ratingParam, durationParam, sortParam]);
 
   // Debounce search
   const debounceRef = useRef();
@@ -168,15 +299,14 @@ export default function Search() {
     const p = new URLSearchParams();
     if (f.q) p.set('q', f.q.trim());
     if (f.category) p.set('category', f.category.toLowerCase());
-    if (f.rating) p.set('minRating', f.rating);
 
     const { minPrice, maxPrice } = toPriceMinMax(f.priceRange);
-    if (minPrice !== undefined) p.set('minPrice', String(minPrice));
-    if (maxPrice !== undefined) p.set('maxPrice', String(maxPrice));
+    if (minPrice !== undefined) p.set('priceMin', String(minPrice));
+    if (maxPrice !== undefined) p.set('priceMax', String(maxPrice));
 
     const { minDuration, maxDuration } = toDurationMinMax(f.duration);
-    if (minDuration !== undefined) p.set('minDuration', String(minDuration));
-    if (maxDuration !== undefined) p.set('maxDuration', String(maxDuration));
+    if (minDuration !== undefined) p.set('durationMin', String(minDuration));
+    if (maxDuration !== undefined) p.set('durationMax', String(maxDuration));
 
     const s = sortMapping(f.sort);
     if (s.sortBy) p.set('sortBy', s.sortBy);
@@ -184,8 +314,8 @@ export default function Search() {
     return p;
   };
 
-  const LIMIT_PLACES = 20;
-  const LIMIT_ACTIVITIES = 20;
+  const LIMIT_PLACES = 100;
+  const LIMIT_ACTIVITIES = 100;
 
   const fetchResults = useCallback(async (f) => {
     try {
@@ -193,7 +323,6 @@ export default function Search() {
       setError(null);
 
       const paramsPlaces = buildCommonParams(f);
-      paramsPlaces.set('approved', 'true');
       paramsPlaces.set('limit', String(LIMIT_PLACES));
 
       const paramsActivities = buildCommonParams(f);
@@ -217,16 +346,14 @@ export default function Search() {
       const newPlaces = robustPick(placesRes, 'places');
       const newActivities = robustPick(activitiesRes, 'activities');
 
-      setResults({
+      setRawResults({
         places: Array.isArray(newPlaces) ? newPlaces : [],
         activities: Array.isArray(newActivities) ? newActivities : []
       });
-      setTotalResults(newPlaces.length + newActivities.length);
 
     } catch (e) {
       setError('Could not load results. Please try again.');
-      setResults({ places: [], activities: [] });
-      setTotalResults(0);
+      setRawResults({ places: [], activities: [] });
     } finally {
       setLoading(false);
     }
@@ -271,6 +398,35 @@ export default function Search() {
     [appliedFilters]
   );
 
+  const results = useMemo(() => {
+    const hasActivityOnlyFilters = Boolean(
+      appliedFilters.priceRange || appliedFilters.rating || appliedFilters.duration
+    );
+
+    const filteredPlaces = rawResults.places
+      .filter((place) => matchesQuery(place, 'place', appliedFilters.q))
+      .filter((place) => matchesCategory(place, appliedFilters.category))
+      .filter((place) => !appliedFilters.rating || matchesRating(place, appliedFilters.rating))
+      .filter((place) => !hasActivityOnlyFilters);
+
+    const filteredActivities = rawResults.activities
+      .filter((activity) => matchesQuery(activity, 'activity', appliedFilters.q))
+      .filter((activity) => matchesCategory(activity, appliedFilters.category))
+      .filter((activity) => matchesPrice(activity, appliedFilters.priceRange))
+      .filter((activity) => matchesRating(activity, appliedFilters.rating))
+      .filter((activity) => matchesDuration(activity, appliedFilters.duration));
+
+    return {
+      places: sortResults(filteredPlaces, 'place', appliedFilters.sort),
+      activities: sortResults(filteredActivities, 'activity', appliedFilters.sort),
+    };
+  }, [appliedFilters, rawResults]);
+
+  const totalResults = useMemo(
+    () => results.places.length + results.activities.length,
+    [results]
+  );
+
   const removeChip = (k) => {
     const next = { ...appliedFilters, [k]: '' };
     setAppliedFilters(next);
@@ -306,52 +462,7 @@ export default function Search() {
             </div>
           </div>
 
-          {/* View + Sort + Filters */}
           <div className="flex items-center gap-3">
-            <div className="hidden sm:flex items-center rounded-lg border border-slate-300 overflow-hidden">
-              <button
-                onClick={() => setViewMode('grid')}
-                className={`px-3 py-2 inline-flex items-center gap-2 transition-colors ${
-                  viewMode === 'grid' 
-                    ? 'bg-slate-100 text-slate-800' 
-                    : 'text-slate-600 hover:bg-slate-50'
-                }`}
-                title="Grid view"
-              >
-                <Grid3X3 className="h-4 w-4" /> Grid
-              </button>
-              <button
-                onClick={() => setViewMode('list')}
-                className={`px-3 py-2 inline-flex items-center gap-2 transition-colors ${
-                  viewMode === 'list' 
-                    ? 'bg-slate-100 text-slate-800' 
-                    : 'text-slate-600 hover:bg-slate-50'
-                }`}
-                title="List view"
-              >
-                <List className="h-4 w-4" /> List
-              </button>
-            </div>
-
-            <div className="relative">
-              <select
-                value={filters.sort}
-                onChange={(e) => {
-                  const next = { ...filters, sort: e.target.value };
-                  setFilters(next);
-                  debouncedApply(next);
-                }}
-                className="appearance-none pl-3 pr-8 py-2 rounded-lg border border-slate-300 bg-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                aria-label="Sort results"
-              >
-                {SORT_OPTIONS.map((s) => (
-                  <option key={s.value} value={s.value}>{s.label}</option>
-                ))}
-              </select>
-              <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
-            </div>
-
-            {/* Mobile filters button */}
             <Button 
               onClick={() => setShowFilters(true)} 
               className="inline-flex items-center gap-2 lg:hidden" 
@@ -437,12 +548,11 @@ export default function Search() {
                       )}
                     </HeaderWithCount>
 
-                    <div className={`${viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' : 'space-y-4'}`}>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                       {results.places.map((place) => (
                         <PlaceCard 
                           key={place._id || place.id} 
                           place={place} 
-                          viewMode={viewMode}
                           onImageError={handleImageError}
                         />
                       ))}
@@ -465,12 +575,11 @@ export default function Search() {
                       )}
                     </HeaderWithCount>
 
-                    <div className={`${viewMode === 'grid' ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6' : 'space-y-4'}`}>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                       {results.activities.map((activity) => (
                         <ActivityCard 
                           key={activity._id || activity.id} 
                           activity={activity} 
-                          viewMode={viewMode}
                           onImageError={handleImageError}
                         />
                       ))}
@@ -520,6 +629,17 @@ export default function Search() {
 /* ---------------------------- Filters Panel --------------------------- */
 function FiltersPanel({ filters, setFilters, apply, applyNow, mobile = false }) {
   const row = (children) => <div className="space-y-2">{children}</div>;
+  const activityOnlyDisabled = filters.type === 'place';
+
+  const handleTypeChange = (type) => {
+    const next =
+      type === 'place'
+        ? { ...filters, type, priceRange: '', rating: '', duration: '' }
+        : { ...filters, type };
+
+    setFilters(next);
+    apply(next);
+  };
 
   return (
     <Card className="border border-slate-200 rounded-2xl">
@@ -536,7 +656,8 @@ function FiltersPanel({ filters, setFilters, apply, applyNow, mobile = false }) 
               ].map((t) => (
                 <button
                   key={t.v || 'all'}
-                  onClick={() => { const next = { ...filters, type: t.v }; setFilters(next); apply(next); }}
+                  type="button"
+                  onClick={() => handleTypeChange(t.v)}
                   className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
                     filters.type === t.v 
                       ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white border-transparent' 
@@ -559,6 +680,7 @@ function FiltersPanel({ filters, setFilters, apply, applyNow, mobile = false }) 
               {CATEGORIES.map((c) => (
                 <button
                   key={c.value}
+                  type="button"
                   onClick={() => {
                     const next = { ...filters, category: filters.category === c.value ? '' : c.value };
                     setFilters(next); 
@@ -582,7 +704,7 @@ function FiltersPanel({ filters, setFilters, apply, applyNow, mobile = false }) 
         {row(
           <>
             <label className="block text-sm font-medium text-slate-800 mb-1">Price</label>
-            <div className="space-y-2">
+            <div className={`space-y-2 ${activityOnlyDisabled ? 'opacity-50' : ''}`}>
               {PRICE_RANGES.map((r) => (
                 <label key={r.value} className="flex items-center">
                   <input
@@ -590,6 +712,7 @@ function FiltersPanel({ filters, setFilters, apply, applyNow, mobile = false }) 
                     name={`price${mobile ? '-m' : ''}`}
                     value={r.value}
                     checked={filters.priceRange === r.value}
+                    disabled={activityOnlyDisabled}
                     onChange={(e) => { 
                       const next = { ...filters, priceRange: e.target.value }; 
                       setFilters(next); 
@@ -606,6 +729,7 @@ function FiltersPanel({ filters, setFilters, apply, applyNow, mobile = false }) 
                   name={`price${mobile ? '-m' : ''}`}
                   value=""
                   checked={filters.priceRange === ''}
+                  disabled={activityOnlyDisabled}
                   onChange={() => { 
                     const next = { ...filters, priceRange: '' }; 
                     setFilters(next); 
@@ -616,6 +740,7 @@ function FiltersPanel({ filters, setFilters, apply, applyNow, mobile = false }) 
                 <span className="text-sm text-slate-700">Any</span>
               </label>
             </div>
+            {activityOnlyDisabled ? <p className="text-xs text-slate-500">Price filter applies to activities only.</p> : null}
           </>
         )}
 
@@ -623,7 +748,7 @@ function FiltersPanel({ filters, setFilters, apply, applyNow, mobile = false }) 
         {row(
           <>
             <label className="block text-sm font-medium text-slate-800 mb-1">Rating</label>
-            <div className="space-y-2">
+            <div className={`space-y-2 ${activityOnlyDisabled ? 'opacity-50' : ''}`}>
               {[5, 4.5, 4].map((r) => (
                 <label key={r} className="flex items-center">
                   <input
@@ -631,6 +756,7 @@ function FiltersPanel({ filters, setFilters, apply, applyNow, mobile = false }) 
                     name={`rating${mobile ? '-m' : ''}`}
                     value={String(r)}
                     checked={filters.rating === String(r)}
+                    disabled={activityOnlyDisabled}
                     onChange={(e) => { 
                       const next = { ...filters, rating: e.target.value }; 
                       setFilters(next); 
@@ -650,6 +776,7 @@ function FiltersPanel({ filters, setFilters, apply, applyNow, mobile = false }) 
                   name={`rating${mobile ? '-m' : ''}`}
                   value=""
                   checked={filters.rating === ''}
+                  disabled={activityOnlyDisabled}
                   onChange={() => { 
                     const next = { ...filters, rating: '' }; 
                     setFilters(next); 
@@ -660,6 +787,7 @@ function FiltersPanel({ filters, setFilters, apply, applyNow, mobile = false }) 
                 <span className="text-sm text-slate-700">Any</span>
               </label>
             </div>
+            {activityOnlyDisabled ? <p className="text-xs text-slate-500">Rating filter applies to activities only.</p> : null}
           </>
         )}
 
@@ -667,7 +795,7 @@ function FiltersPanel({ filters, setFilters, apply, applyNow, mobile = false }) 
         {row(
           <>
             <label className="block text-sm font-medium text-slate-800 mb-1">Duration</label>
-            <div className="space-y-2">
+            <div className={`space-y-2 ${activityOnlyDisabled ? 'opacity-50' : ''}`}>
               {[
                 { v: 'short', label: 'Up to 2 hours' },
                 { v: 'halfday', label: '2–5 hours' },
@@ -680,6 +808,7 @@ function FiltersPanel({ filters, setFilters, apply, applyNow, mobile = false }) 
                     name={`duration${mobile ? '-m' : ''}`}
                     value={d.v}
                     checked={filters.duration === d.v}
+                    disabled={activityOnlyDisabled}
                     onChange={(e) => { 
                       const next = { ...filters, duration: e.target.value }; 
                       setFilters(next); 
@@ -696,6 +825,7 @@ function FiltersPanel({ filters, setFilters, apply, applyNow, mobile = false }) 
                   name={`duration${mobile ? '-m' : ''}`}
                   value=""
                   checked={filters.duration === ''}
+                  disabled={activityOnlyDisabled}
                   onChange={() => { 
                     const next = { ...filters, duration: '' }; 
                     setFilters(next); 
@@ -706,6 +836,7 @@ function FiltersPanel({ filters, setFilters, apply, applyNow, mobile = false }) 
                 <span className="text-sm text-slate-700">Any</span>
               </label>
             </div>
+            {activityOnlyDisabled ? <p className="text-xs text-slate-500">Duration filter applies to activities only.</p> : null}
           </>
         )}
 

@@ -657,6 +657,14 @@ const INR = (n) =>
     maximumFractionDigits: 0
   }).format(Number(n || 0));
 
+const DEFAULT_MAX_GUESTS = 50;
+const GUEST_RANGE_STEPS = [
+  { min: 1, max: 5 },
+  { min: 6, max: 10 },
+  { min: 11, max: 20 },
+  { min: 21, max: 50 },
+];
+
 export default function BookingButton({
   activity,
   isPlace = false,
@@ -681,6 +689,10 @@ export default function BookingButton({
   const duration = activity?.duration;
   const rating = activity?.rating?.avg;
   const basePrice = activity?.basePrice || 99;
+  const maxGuests = Number(activity?.capacity || activity?.maxGuests) > 0
+    ? Number(activity.capacity || activity.maxGuests)
+    : DEFAULT_MAX_GUESTS;
+  const guestCount = Number(guests || 1);
 
   // Focus management
   useEffect(() => {
@@ -886,33 +898,44 @@ export default function BookingButton({
                     </label>
                     <div className="relative">
                       <UsersIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                      <select
-                        value={guests}
-                        onChange={(e) => setGuests(e.target.value)}
-                        className="w-full pl-10 pr-10 py-3 border-2 border-gray-300 dark:border-gray-600 rounded-xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 appearance-none dark:bg-gray-700 dark:text-white transition-all outline-none cursor-pointer"
-                      >
-                        {Array.from({ length: 10 }, (_, i) => i + 1).map((num) => (
-                          <option key={num} value={num}>
-                            {num} Guest{num > 1 ? "s" : ""}
-                          </option>
-                        ))}
-                      </select>
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                        <svg
-                          className="h-5 w-5 text-gray-400"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M19 9l-7 7-7-7"
-                          />
-                        </svg>
+                        <input
+                          type="number"
+                          min={1}
+                          max={maxGuests}
+                          step={1}
+                          value={guests}
+                          onChange={(e) => setGuests(e.target.value)}
+                          className="w-full pl-10 pr-4 py-3 border-2 border-gray-300 dark:border-gray-600 rounded-xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 dark:bg-gray-700 dark:text-white transition-all outline-none"
+                          placeholder={`Enter 1 to ${maxGuests}`}
+                        />
+                      </div>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {GUEST_RANGE_STEPS
+                          .filter((range) => range.min <= maxGuests)
+                          .map((range) => {
+                            const rangeMax = Math.min(range.max, maxGuests);
+                            const isActive = guestCount >= range.min && guestCount <= rangeMax;
+
+                            return (
+                              <button
+                                key={`${range.min}-${range.max}`}
+                                type="button"
+                                onClick={() => setGuests(String(range.min))}
+                                className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                                  isActive
+                                    ? "border-primary-600 bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-300"
+                                    : "border-gray-300 text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+                                }`}
+                              >
+                                {range.min}-{rangeMax} guests
+                              </button>
+                            );
+                          })}
                       </div>
                     </div>
+                    <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                      Enter the exact guest count. Range buttons are shortcuts.
+                    </p>
                   </div>
 
                   {/* Price Preview */}

@@ -393,14 +393,25 @@ export default function BookingConfirm() {
                   value={INR(pricing.subtotal || pricing.basePrice * guests)}
                 />
               )}
+              {pricing.groupDiscount > 0 && (
+                <PriceRow
+                  label={`Group discount${pricing.groupDiscountRate ? ` (${Math.round(pricing.groupDiscountRate * 100)}%)` : ""}`}
+                  value={`− ${INR(pricing.groupDiscount)}`}
+                  discount
+                />
+              )}
               {pricing.tax > 0 && (
                 <PriceRow label="Tax (18% GST)" value={INR(pricing.tax)} />
               )}
               {pricing.serviceFee > 0 && (
                 <PriceRow label="Service fee" value={INR(pricing.serviceFee)} />
               )}
-              {pricing.promoOff > 0 && (
-                <PriceRow label="Promo discount" value={`− ${INR(pricing.promoOff)}`} discount />
+              {pricing.promoDiscount > 0 && (
+                <PriceRow
+                  label={`Promo discount${pricing.promoCode ? ` (${pricing.promoCode})` : ""}`}
+                  value={`− ${INR(pricing.promoDiscount)}`}
+                  discount
+                />
               )}
 
               <div className="h-px bg-gray-100 dark:bg-gray-700 my-1" />

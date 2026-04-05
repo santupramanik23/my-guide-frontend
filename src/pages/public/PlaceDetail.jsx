@@ -185,7 +185,7 @@ export default function PlaceDetail() {
   const hasImages = validImages.length > 0;
   const title = name || "Untitled Place";
   const displayPrice = price || startingPrice || 99;
-  const guestText = maxGuests ? `Up to ${maxGuests} guests` : "Up to 10 guests";
+  const guestText = maxGuests ? `Up to ${maxGuests} guests` : "Up to 50 guests";
   const reviews = place?.reviews?.length ? place.reviews : MOCK_REVIEWS;
   const reviewCount = reviews.length;
   const averageRating =

@@ -81,10 +81,11 @@ function ProfessionalHeader() {
 
           <nav className="hidden items-center gap-1 lg:flex">
             {NAV_LINKS.map((link) => {
+              const searchType = new URLSearchParams(location.search).get("type");
               const isActive =
-                (link.to === "/search" && isSearchSection) ||
-                (link.to.includes("type=place") && location.search.includes("type=place")) ||
-                (link.to.includes("type=activity") && location.search.includes("type=activity"));
+                (link.to === "/search" && isSearchSection && !searchType) ||
+                (link.to.includes("type=place") && searchType === "place") ||
+                (link.to.includes("type=activity") && searchType === "activity");
 
               return (
                 <Link
