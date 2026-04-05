@@ -5,20 +5,33 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#ffffff" />
     <meta name="description" content="My Guide - Your travel companion" />
-    
+
+    <!-- DNS prefetch + preconnect for external resources -->
+    <link rel="preconnect" href="https://images.unsplash.com" crossorigin />
+    <link rel="dns-prefetch" href="https://images.unsplash.com" />
+    <link rel="preconnect" href="https://res.cloudinary.com" crossorigin />
+    <link rel="dns-prefetch" href="https://res.cloudinary.com" />
+
     <title>My Guide</title>
     <link rel="icon" href="/LOGO2.png" type="image/png" />
     
     <!-- Prevent theme flash on load -->
     <script>
-      const stored = localStorage.getItem('my-guide-ui');
-      if (stored) {
-        const theme = JSON.parse(stored).state.theme;
-        document.documentElement.classList.add(theme);
-      } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-        document.documentElement.classList.add('dark');
-      } else {
-        document.documentElement.classList.add('light');
+      try {
+        const stored = localStorage.getItem("my-guide-ui");
+        const parsed = stored ? JSON.parse(stored) : null;
+        const themeMode = parsed?.state?.themeMode || "system";
+        const resolvedTheme =
+          themeMode === "system"
+            ? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
+            : themeMode;
+
+        document.documentElement.classList.add(resolvedTheme);
+        document.documentElement.dataset.theme = resolvedTheme;
+      } catch {
+        const fallbackTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        document.documentElement.classList.add(fallbackTheme);
+        document.documentElement.dataset.theme = fallbackTheme;
       }
     </script>
   </head>

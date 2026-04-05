@@ -1,49 +1,58 @@
 
 // src/Router.jsx
-import { useEffect } from 'react';
+import { useEffect, lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Link } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 
-// Layout and auth
+// Layout and auth (always needed, keep eager)
 import Layout from "@/components/Layout/Layout";
 import { useAuthStore } from '@/store/auth';
 
-/* ---------- Public pages ---------- */
-import Home from "@/pages/public/Home";
-import Search from "@/pages/public/Search";
-import PlaceDetail from "@/pages/public/PlaceDetail";
-import ActivityDetail from "@/pages/public/ActivityDetail";
-
-/* ---------- Auth ---------- */
-import Login from "@/pages/auth/Login";
-import Signup from "@/pages/auth/Signup";
-
-/* ---------- Booking ---------- */
-import BookingFlow from "@/pages/booking/BookingFlow";
-import BookingConfirm from "@/pages/booking/BookingConfirm";
-
-/* ---------- Account pages ---------- */
-import MyBookings from "@/pages/account/MyBookings";  
-import Wishlist from "@/pages/account/Wishlist"; 
-import Profile from "@/pages/account/Profile";
-
-/* ---------- Dashboards ---------- */
-import TravellerDashboard from "@/pages/dashboards/TravellerDashboard";
-import GuideDashboard from "@/pages/dashboards/GuideDashboard";
-import InstructorDashboard from "@/pages/dashboards/InstructorDashboard";
-import AdvisorDashboard from "@/pages/dashboards/AdvisorDashboard";
-import AdminDashboard from "@/pages/admin/AdminDashboard";
-
-/* ---------- Admin CRUD ---------- */
-import PlaceList from "@/pages/admin/PlaceList";
-import PlaceCreate from "@/pages/admin/PlaceCreate";
-import ActivityList from "@/pages/admin/ActivityList";
-import ActivityCreate from "@/pages/admin/ActivityCreate";
-import UsersList from "@/pages/admin/UsersList";
-
-/* ---------- Route guards ---------- */
+/* ---------- Route guards (always needed, keep eager) ---------- */
 import ProtectedRoute from "./ProtectedRoute";
 import RoleGate from "./RoleGate";
+
+/* ---------- Public pages ---------- */
+const Home = lazy(() => import("@/pages/public/Home"));
+const Search = lazy(() => import("@/pages/public/Search"));
+const PlaceDetail = lazy(() => import("@/pages/public/PlaceDetail"));
+const ActivityDetail = lazy(() => import("@/pages/public/ActivityDetail"));
+
+/* ---------- Auth ---------- */
+const Login = lazy(() => import("@/pages/auth/Login"));
+const Signup = lazy(() => import("@/pages/auth/Signup"));
+
+/* ---------- Booking ---------- */
+const BookingFlow = lazy(() => import("@/pages/booking/BookingFlow"));
+const BookingConfirm = lazy(() => import("@/pages/booking/BookingConfirm"));
+
+/* ---------- Account pages ---------- */
+const MyBookings = lazy(() => import("@/pages/account/MyBookings"));
+const Wishlist = lazy(() => import("@/pages/account/Wishlist"));
+const Profile = lazy(() => import("@/pages/account/Profile"));
+
+/* ---------- Dashboards ---------- */
+const TravellerDashboard = lazy(() => import("@/pages/dashboards/TravellerDashboard"));
+const GuideDashboard = lazy(() => import("@/pages/dashboards/GuideDashboard"));
+const InstructorDashboard = lazy(() => import("@/pages/dashboards/InstructorDashboard"));
+const AdvisorDashboard = lazy(() => import("@/pages/dashboards/AdvisorDashboard"));
+const AdminDashboard = lazy(() => import("@/pages/admin/AdminDashboard"));
+
+/* ---------- Admin CRUD ---------- */
+const PlaceList = lazy(() => import("@/pages/admin/PlaceList"));
+const PlaceCreate = lazy(() => import("@/pages/admin/PlaceCreate"));
+const ActivityList = lazy(() => import("@/pages/admin/ActivityList"));
+const ActivityCreate = lazy(() => import("@/pages/admin/ActivityCreate"));
+const UsersList = lazy(() => import("@/pages/admin/UsersList"));
+
+/* ---------- Page fallback ---------- */
+function PageLoader() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+      <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
+    </div>
+  );
+}
 
 /* ---------- Auth-aware components ---------- */
 const DashboardRedirect = () => {
@@ -115,6 +124,7 @@ export default function Router() {
 
   return (
     <BrowserRouter>
+      <Suspense fallback={<PageLoader />}>
       <Routes>
         {/* ---------- Public shell ---------- */}
         <Route path="/" element={<Layout />}>
@@ -423,6 +433,7 @@ export default function Router() {
         {/* ---------- 404 ---------- */}
         <Route path="*" element={<NotFound />} />
       </Routes>
+      </Suspense>
 
       <Toaster
         position="top-right"

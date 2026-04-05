@@ -79,7 +79,6 @@ function sortMapping(value) {
 // Robust data extraction from API responses
 function robustPick(res, key) {
   if (!res) return [];
-  
   const d = res?.data;
   const arr =
     d?.[key] ||
@@ -88,8 +87,6 @@ function robustPick(res, key) {
     d?.docs ||
     d?.results ||
     d;
-  
-  console.log(`🔍 Extracting ${key}:`, arr);
   return Array.isArray(arr) ? arr : [];
 }
 
@@ -172,32 +169,28 @@ export default function Search() {
     if (f.q) p.set('q', f.q.trim());
     if (f.category) p.set('category', f.category.toLowerCase());
     if (f.rating) p.set('minRating', f.rating);
-    
+
     const { minPrice, maxPrice } = toPriceMinMax(f.priceRange);
     if (minPrice !== undefined) p.set('minPrice', String(minPrice));
     if (maxPrice !== undefined) p.set('maxPrice', String(maxPrice));
-    
+
     const { minDuration, maxDuration } = toDurationMinMax(f.duration);
     if (minDuration !== undefined) p.set('minDuration', String(minDuration));
     if (maxDuration !== undefined) p.set('maxDuration', String(maxDuration));
-    
+
     const s = sortMapping(f.sort);
     if (s.sortBy) p.set('sortBy', s.sortBy);
     if (s.order) p.set('order', s.order);
-    
-    p.set('_t', Date.now().toString());
     return p;
   };
 
-  const LIMIT_PLACES = 100;
-  const LIMIT_ACTIVITIES = 100;
+  const LIMIT_PLACES = 20;
+  const LIMIT_ACTIVITIES = 20;
 
   const fetchResults = useCallback(async (f) => {
     try {
       setLoading(true);
       setError(null);
-      
-      console.log('🔍 Fetching with filters:', f);
 
       const paramsPlaces = buildCommonParams(f);
       paramsPlaces.set('approved', 'true');
@@ -211,33 +204,26 @@ export default function Search() {
       const wantActivities = !f.type || f.type === 'activity';
 
       const reqs = [
-        wantPlaces ? api.get(`/places?${paramsPlaces.toString()}`).catch((e) => {
-          console.error('Places fetch error:', e);
-          return { data: [] };
-        }) : Promise.resolve({ data: [] }),
-        
-        wantActivities ? api.get(`/activities?${paramsActivities.toString()}`).catch((e) => {
-          console.error('Activities fetch error:', e);
-          return { data: [] };
-        }) : Promise.resolve({ data: [] }),
+        wantPlaces
+          ? api.get(`/places?${paramsPlaces.toString()}`).catch(() => ({ data: [] }))
+          : Promise.resolve({ data: [] }),
+        wantActivities
+          ? api.get(`/activities?${paramsActivities.toString()}`).catch(() => ({ data: [] }))
+          : Promise.resolve({ data: [] }),
       ];
 
       const [placesRes, activitiesRes] = await Promise.all(reqs);
 
-      console.log('📊 Places response:', placesRes);
-      console.log('📊 Activities response:', activitiesRes);
-
       const newPlaces = robustPick(placesRes, 'places');
       const newActivities = robustPick(activitiesRes, 'activities');
 
-      setResults({ 
+      setResults({
         places: Array.isArray(newPlaces) ? newPlaces : [],
         activities: Array.isArray(newActivities) ? newActivities : []
       });
       setTotalResults(newPlaces.length + newActivities.length);
-      
+
     } catch (e) {
-      console.error('❌ Search failed:', e);
       setError('Could not load results. Please try again.');
       setResults({ places: [], activities: [] });
       setTotalResults(0);
@@ -247,7 +233,7 @@ export default function Search() {
   }, []);
 
   // Fetch results when appliedFilters change
-  useEffect(() => { 
+  useEffect(() => {
     fetchResults(appliedFilters);
   }, [fetchResults, appliedFilters]);
 

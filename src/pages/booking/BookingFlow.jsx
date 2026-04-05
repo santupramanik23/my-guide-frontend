@@ -1,701 +1,214 @@
-// import React, { useEffect, useMemo, useState } from "react";
-// import { useSearchParams, useNavigate, Link } from "react-router-dom";
-// import {
-//   AlertTriangle, Users, Mail, Phone, User, Loader2, MapPin, Clock,
-//   CreditCard, CheckCircle2, Star, Info, ChevronRight, ArrowLeft, X,
-//   ChevronLeft, ChevronRight as ChevronRightIcon, Calendar as CalendarIcon,
-// } from "lucide-react";
-// import { Card, CardContent } from "@/components/ui/Card";
-// import Button from "@/components/ui/Button"; // ✅ fix: was importing BookingButton as Button before :contentReference[oaicite:2]{index=2}
-// import { api, useAuthStore } from "@/store/auth";
-// import toast from "react-hot-toast";
-
-// /* ---------- utils ---------- */
-// const INR = (n) => new Intl.NumberFormat("en-IN",{style:"currency",currency:"INR",maximumFractionDigits:0}).format(Number(n||0));
-// const fmtDuration = (m)=>{ if(!m) return "—"; if(m<60) return `${m}m`; const h=Math.floor(m/60),r=m%60; return r?`${h}h ${r}m`:`${h}h`; };
-// const isApproved = (d)=> d?.approved===true || d?.isApproved===true || d?.status==="approved";
-// const todayISO = ()=>{ const d=new Date(); d.setHours(0,0,0,0); return d.toISOString().split("T")[0]; };
-
-// /* ---------- inline Calendar (no extra files) ---------- */
-// const addMonths = (d, n)=>{ const x=new Date(d); x.setMonth(x.getMonth()+n); x.setDate(1); return x; };
-// const daysInMonth = (d)=> new Date(d.getFullYear(), d.getMonth()+1, 0).getDate();
-// const toISODate = (d)=> d.toISOString().split("T")[0];
-
-// function CalendarPicker({ value, onChange, label="Date", required=true }) {
-//   const min = new Date(); min.setHours(0,0,0,0);
-//   const [view, setView] = useState(()=> value? new Date(value) : min);
-//   const firstDow = (new Date(view.getFullYear(), view.getMonth(), 1).getDay()+6)%7; // Mon=0
-//   const total = daysInMonth(view);
-//   const weeks=[]; let day=1-firstDow;
-//   while(day<=total){ const row=[]; for(let i=0;i<7;i++) row.push(new Date(view.getFullYear(), view.getMonth(), day++)); weeks.push(row); }
-//   const sel = value? new Date(value) : null;
-
-//   return (
-//     <div>
-//       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-//         {label} {required && <span className="text-red-500">*</span>}
-//       </label>
-//       <div className="rounded-lg border border-gray-300 dark:border-gray-700 overflow-hidden">
-//         <div className="flex items-center justify-between px-3 py-2 bg-gray-50 dark:bg-gray-800">
-//           <button type="button" onClick={()=>setView((v)=>addMonths(v,-1))} className="p-1 rounded hover:bg-white/70 dark:hover:bg-gray-700" aria-label="Previous month">
-//             <ChevronLeft className="h-5 w-5" />
-//           </button>
-//           <div className="flex items-center gap-2 font-semibold">
-//             <CalendarIcon className="h-4 w-4" />
-//             {view.toLocaleDateString("en-IN",{month:"long",year:"numeric"})}
-//           </div>
-//           <button type="button" onClick={()=>setView((v)=>addMonths(v,1))} className="p-1 rounded hover:bg-white/70 dark:hover:bg-gray-700" aria-label="Next month">
-//             <ChevronRightIcon className="h-5 w-5" />
-//           </button>
-//         </div>
-//         <div className="grid grid-cols-7 text-xs text-center py-2">
-//           {["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map((d)=> <div key={d} className="text-gray-500">{d}</div>)}
-//         </div>
-//         <div className="grid grid-cols-7 gap-1 p-2">
-//           {weeks.map((row,ri)=> row.map((d,ci)=>{
-//             const disabled = d<min || d.getMonth()!==view.getMonth();
-//             const selected = sel && d.toDateString()===sel.toDateString();
-//             return (
-//               <button
-//                 key={`${ri}-${ci}`} type="button" disabled={disabled} aria-pressed={selected}
-//                 onClick={()=>onChange(toISODate(d))}
-//                 className={[
-//                   "h-10 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500",
-//                   disabled? "text-gray-400 cursor-not-allowed" : "hover:bg-primary-50 dark:hover:bg-primary-900/30",
-//                   selected? "bg-primary-600 text-white hover:bg-primary-600" : "bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700"
-//                 ].join(" ")}
-//               >
-//                 {d.getDate()}
-//               </button>
-//             );
-//           }))}
-//         </div>
-//       </div>
-//       {/* mobile fallback */}
-//       <input type="date" value={value||""} min={todayISO()} onChange={(e)=>onChange(e.target.value)}
-//         className="mt-2 w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg dark:bg-gray-800 dark:text-white md:hidden"/>
-//     </div>
-//   );
-// }
-
-// /* ---------- page ---------- */
-// export default function BookingFlow(){
-//   const nav = useNavigate();
-//   const [q] = useSearchParams();
-//   const { isAuthenticated, user } = useAuthStore();
-
-//   const itemId = q.get("activity") || q.get("place");
-//   const itemType = q.get("place") ? "place" : "activity";
-
-//   const [loading, setLoading] = useState(true);
-//   const [item, setItem] = useState(null);
-//   const [error, setError] = useState("");
-//   const [step, setStep] = useState(0);
-//   const [submitting, setSubmitting] = useState(false);
-
-//   const [date, setDate] = useState(q.get("date") || "");
-//   const [guests, setGuests] = useState(q.get("guests") || "1");
-//   const [name, setName] = useState(user?.name || "");
-//   const [email, setEmail] = useState(user?.email || "");
-//   const [phone, setPhone] = useState(user?.phone || "");
-//   const [special, setSpecial] = useState("");
-//   const [agree, setAgree] = useState(false);
-//   const [promo, setPromo] = useState("");
-
-//   useEffect(()=>{
-//     let ignore=false;
-//     (async()=>{
-//       if(!itemId){ setError("No item selected."); setLoading(false); return; }
-//       try{
-//         setLoading(true); setError("");
-//         let d;
-//         try { const r = await api.get(`/activities/${itemId}`, { silenceToast:true }); d = r?.data?.data || r?.data || r; }
-//         catch { const r = await api.get(`/places/${itemId}`, { silenceToast:true }); d = r?.data?.data || r?.data?.place || r?.data || r; }
-//         if (d && (d.approved===undefined || isApproved(d))) setItem(d);
-//         else { setItem(null); setError("This item is not available for booking."); }
-//       }catch{ setError("Failed to load item details."); }
-//       finally{ if(!ignore) setLoading(false); }
-//     })();
-//     return ()=>{ ignore=true; };
-//   },[itemId]);
-
-//   const pricing = useMemo(()=>{
-//     const base = typeof item?.basePrice==="number" ? item.basePrice : 99;
-//     const g = Number(guests||1);
-//     const subtotal = base*g;
-//     const tax = Math.round(subtotal*0.18);
-//     const fee = Math.round(subtotal*0.05);
-//     const promoOff = promo.trim().toUpperCase()==="WELCOME10" ? Math.floor(subtotal*0.1) : 0;
-//     const total = Math.max(0, subtotal + tax + fee - promoOff);
-//     return { base, g, subtotal, tax, fee, promoOff, total };
-//   },[item, guests, promo]);
-
-//   const validDate = date && new Date(date).setHours(0,0,0,0) >= new Date().setHours(0,0,0,0);
-//   const validGuests = Number(guests) >= 1;
-//   const validContact = name.trim().length>=2 && /\S+@\S+\.\S+/.test(email) && phone.replace(/\D/g,"").length>=10;
-//   const canNext = step===0 ? (validDate && validGuests) : step===1 ? validContact : agree;
-
-//   const submit = async()=>{
-//     if(!agree){ toast.error("Please agree to the terms"); return; }
-//     if(!isAuthenticated){
-//       nav("/auth/login",{ state:{ returnTo:`/booking?${itemType}=${itemId}&date=${date}&guests=${guests}` }});
-//       return;
-//     }
-//     try{
-//       setSubmitting(true); setError("");
-//       const payload = {
-//         activityId: itemType==="activity" ? itemId : undefined,
-//         placeId: itemType==="place" ? itemId : undefined,
-//         date,
-//         participants: Number(guests),
-//         peopleCount: Number(guests),                 // compatibility
-//         participantDetails: [{ name: name.trim(), email: email.trim(), phone: phone.trim() }],
-//         customer: { name: name.trim(), email: email.trim(), phone: phone.trim() }, // compatibility
-//         specialRequests: special?.trim() || "",
-//         pricing: { basePrice: pricing.base, subtotal: pricing.subtotal, tax: pricing.tax, serviceFee: pricing.fee, promoOff: pricing.promoOff, total: pricing.total },
-//         totalAmount: pricing.total,
-//       };
-//       const r = await api.post("/bookings", payload);
-//       const data = r?.data?.data || r?.data;
-//       const id = data?.booking?._id || data?.booking?.id || data?._id || data?.id;
-//       if (!id) throw new Error("No booking id in response");
-//       toast.success("Booking created!");
-//       nav(`/booking/confirm?id=${id}`, { replace:true });
-//     }catch(e){
-//       const msg = e?.response?.data?.message || e?.message || "Unable to create booking.";
-//       setError(msg); toast.error(msg);
-//     }finally{ setSubmitting(false); }
-//   };
-
-//   if (loading){
-//     return (
-//       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 grid place-items-center">
-//         <div className="text-center">
-//           <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-primary-600"/>
-//           <p className="text-gray-600 dark:text-gray-400">Loading details...</p>
-//         </div>
-//       </div>
-//     );
-//   }
-//   if (!item){
-//     return (
-//       <div className="max-w-3xl mx-auto px-4 py-16 text-center">
-//         <div className="mx-auto w-16 h-16 rounded-full bg-amber-100 dark:bg-amber-900/20 grid place-items-center mb-4">
-//           <AlertTriangle className="h-8 w-8 text-amber-600 dark:text-amber-400"/>
-//         </div>
-//         <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Item Unavailable</h2>
-//         <p className="text-gray-600 dark:text-gray-400 mb-6">{error || "This item is not available for booking."}</p>
-//         <div className="flex gap-3 justify-center">
-//           <Button as={Link} to="/search" variant="outline">Browse Activities</Button>
-//           <Button as={Link} to="/">Go Home</Button>
-//         </div>
-//       </div>
-//     );
-//   }
-
-//   const title = item.title || "Untitled";
-//   const city = item?.place?.city || item?.city;
-//   const duration = item.duration || (item.durationMinutes ? fmtDuration(item.durationMinutes) : null);
-//   const rating = item?.rating?.avg;
-
-//   return (
-//     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
-//       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-//         <Link
-//           to={itemType==="place" ? `/places/${itemId}` : `/activities/${itemId}`}
-//           className="inline-flex items-center gap-2 text-primary-600 hover:text-primary-700 dark:text-primary-400 text-sm font-medium mb-6"
-//         >
-//           <ArrowLeft className="h-4 w-4"/> Back to {itemType}
-//         </Link>
-
-//         <div className="mb-8">
-//           <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Complete Your Booking</h1>
-//           <p className="text-gray-600 dark:text-gray-400">Follow the steps to confirm your reservation</p>
-//         </div>
-
-//         {/* Stepper */}
-//         <div className="mb-8">
-//           <div className="flex items-center justify-between max-w-2xl">
-//             {["Details","Contact","Review"].map((label,i)=>{
-//               const done = i<step, active = i===step;
-//               return (
-//                 <React.Fragment key={label}>
-//                   <div className="flex flex-col items-center flex-1">
-//                     <div className={`w-10 h-10 rounded-full grid place-items-center text-sm font-semibold transition-all ${
-//                       done? "bg-primary-600 text-white" : active? "bg-primary-100 text-primary-600 ring-4 ring-primary-200 dark:bg-primary-900/20 dark:text-primary-400" : "bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-600"
-//                     }`}>
-//                       {done? <CheckCircle2 className="h-5 w-5"/> : i+1}
-//                     </div>
-//                     <span className={`mt-2 text-xs font-medium ${active?"text-gray-900 dark:text-white":"text-gray-500 dark:text-gray-400"}`}>{label}</span>
-//                   </div>
-//                   {i<2 && <div className={`flex-1 h-1 -mt-8 rounded-full ${done?"bg-primary-600":"bg-gray-200 dark:bg-gray-700"}`}/>}
-//                 </React.Fragment>
-//               );
-//             })}
-//           </div>
-//         </div>
-
-//         <div className="grid lg:grid-cols-3 gap-8">
-//           {/* Main */}
-//           <div className="lg:col-span-2 space-y-6">
-//             {/* Item summary */}
-//             <Card><CardContent className="p-6">
-//               <div className="flex gap-4">
-//                 <div className="w-20 h-20 rounded-lg bg-gradient-to-br from-primary-100 to-primary-200 dark:from-primary-900/20 dark:to-primary-800/20 grid place-items-center text-3xl">
-//                   {itemType==="place"?"📍":"🎯"}
-//                 </div>
-//                 <div className="flex-1 min-w-0">
-//                   <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-2">{title}</h2>
-//                   <div className="flex flex-wrap items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
-//                     {city && <span className="inline-flex items-center gap-1"><MapPin className="h-4 w-4"/>{city}</span>}
-//                     {duration && <span className="inline-flex items-center gap-1"><Clock className="h-4 w-4"/>{duration}</span>}
-//                     {rating && <span className="inline-flex items-center gap-1"><Star className="h-4 w-4 fill-yellow-400 text-yellow-400"/>{Number(rating).toFixed(1)}</span>}
-//                   </div>
-//                 </div>
-//               </div>
-//             </CardContent></Card>
-
-//             {error && (
-//               <div className="rounded-lg border border-red-200 bg-red-50 dark:border-red-900/50 dark:bg-red-900/20 p-4">
-//                 <div className="flex gap-3">
-//                   <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0"/>
-//                   <div className="text-sm text-red-800 dark:text-red-200">{error}</div>
-//                 </div>
-//               </div>
-//             )}
-
-//             {/* Step card */}
-//             <Card><CardContent className="p-6 space-y-6">
-//               {step===0 && (
-//                 <div className="space-y-6">
-//                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Select Date & Guests</h3>
-//                   <div className="grid md:grid-cols-2 gap-4">
-//                     <CalendarPicker value={date} onChange={setDate}/>
-//                     <div>
-//                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-//                         Guests <span className="text-red-500">*</span>
-//                       </label>
-//                       <div className="relative">
-//                         <Users className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400"/>
-//                         <select
-//                           value={guests}
-//                           onChange={(e)=>setGuests(e.target.value)}
-//                           className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent appearance-none dark:bg-gray-800 dark:text-white"
-//                         >
-//                           {Array.from({length:10},(_,i)=>i+1).map(n=> <option key={n} value={n}>{n} {n>1?"guests":"guest"}</option>)}
-//                         </select>
-//                       </div>
-//                       {!validGuests && <p className="mt-1 text-sm text-red-600 dark:text-red-400 flex items-center gap-1"><X className="h-3 w-3"/>At least 1 guest</p>}
-//                     </div>
-//                   </div>
-
-//                   <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-//                     <div className="flex gap-2">
-//                       <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5"/>
-//                       <div className="text-sm text-blue-800 dark:text-blue-200">
-//                         <p className="font-medium mb-1">Flexible Booking</p>
-//                         <p>Free cancellation up to 24 hours before your activity starts</p>
-//                       </div>
-//                     </div>
-//                   </div>
-//                 </div>
-//               )}
-
-//               {step===1 && (
-//                 <div className="space-y-6">
-//                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Contact Information</h3>
-//                   <div className="grid md:grid-cols-2 gap-4">
-//                     <div>
-//                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Full Name <span className="text-red-500">*</span></label>
-//                       <div className="relative">
-//                         <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400"/>
-//                         <input value={name} onChange={(e)=>setName(e.target.value)} className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-800 dark:text-white" placeholder="e.g., Priya Sharma"/>
-//                       </div>
-//                       {name.trim().length<2 && <p className="mt-1 text-sm text-red-600 dark:text-red-400 flex items-center gap-1"><X className="h-3 w-3"/>Name is required</p>}
-//                     </div>
-//                     <div>
-//                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Email <span className="text-red-500">*</span></label>
-//                       <div className="relative">
-//                         <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400"/>
-//                         <input value={email} onChange={(e)=>setEmail(e.target.value)} type="email" className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-800 dark:text-white" placeholder="name@example.com"/>
-//                       </div>
-//                       {!/\S+@\S+\.\S+/.test(email) && <p className="mt-1 text-sm text-red-600 dark:text-red-400 flex items-center gap-1"><X className="h-3 w-3"/>Enter a valid email</p>}
-//                     </div>
-//                     <div>
-//                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Phone <span className="text-red-500">*</span></label>
-//                       <div className="relative">
-//                         <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400"/>
-//                         <input value={phone} onChange={(e)=>setPhone(e.target.value.replace(/[^\d+ -]/g,""))} type="tel" className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-800 dark:text-white" placeholder="+91 98765 43210"/>
-//                       </div>
-//                       {phone.replace(/\D/g,"").length<10 && <p className="mt-1 text-sm text-red-600 dark:text-red-400 flex items-center gap-1"><X className="h-3 w-3"/>Enter 10+ digits</p>}
-//                     </div>
-//                     <div className="md:col-span-2">
-//                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Special Requests</label>
-//                       <textarea value={special} onChange={(e)=>setSpecial(e.target.value)} rows={4} className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-800 dark:text-white" placeholder="(optional)"/>
-//                     </div>
-//                   </div>
-//                 </div>
-//               )}
-
-//               {step===2 && (
-//                 <div className="space-y-6">
-//                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Review & Confirm</h3>
-//                   <div className="space-y-3 text-sm text-gray-700 dark:text-gray-300">
-//                     <div className="flex items-center justify-between"><span>Date</span><span className="font-medium">{date? new Date(date).toLocaleDateString("en-IN",{weekday:"short", day:"numeric", month:"short", year:"numeric"}) : "—"}</span></div>
-//                     <div className="flex items-center justify-between"><span>Guests</span><span className="font-medium">{guests}</span></div>
-//                     <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg p-3">
-//                       <CheckCircle2 className="h-4 w-4"/> Reserve now & pay later — no payment today.
-//                     </div>
-//                     <label className="flex items-start gap-3">
-//                       <input type="checkbox" checked={agree} onChange={(e)=>setAgree(e.target.checked)} className="mt-1 h-4 w-4"/>
-//                       <span className="text-gray-600 dark:text-gray-300">
-//                         I agree to the <a href="/terms" className="text-primary-600 dark:text-primary-400 underline">Terms & Conditions</a> and <a href="/cancellation" className="text-primary-600 dark:text-primary-400 underline">Cancellation Policy</a>.
-//                       </span>
-//                     </label>
-//                     {!agree && <p className="mt-1 text-sm text-red-600 dark:text-red-400 flex items-center gap-1"><X className="h-3 w-3"/>You must agree to continue</p>}
-//                   </div>
-//                 </div>
-//               )}
-
-//               <div className="pt-2 flex items-center justify-between">
-//                 <Button variant="outline" onClick={()=>setStep((s)=>Math.max(0,s-1))} disabled={step===0 || submitting}>Back</Button>
-//                 {step<2 ? (
-//                   <Button onClick={()=>setStep((s)=>s+1)} disabled={!canNext}>Continue <ChevronRight className="h-4 w-4 ml-2"/></Button>
-//                 ) : (
-//                   <Button onClick={submit} disabled={!canNext || submitting}>
-//                     {submitting ? "Creating Booking..." : "Confirm Booking"} <CreditCard className="h-4 w-4 ml-2"/>
-//                   </Button>
-//                 )}
-//               </div>
-//             </CardContent></Card>
-//           </div>
-
-//           {/* Right rail summary */}
-//           <div className="lg:col-span-1">
-//             <div className="lg:sticky lg:top-6 space-y-6">
-//               <Card className="shadow-lg"><CardContent className="p-6 space-y-4">
-//                 <div className="flex items-center justify-between">
-//                   <h3 className="text-base font-semibold dark:text-white">Order Summary</h3>
-//                   <span className="text-xs text-gray-500">Instant confirmation</span>
-//                 </div>
-//                 <div className="text-sm text-gray-700 dark:text-gray-300">
-//                   <div className="flex items-center justify-between py-1">
-//                     <span>{INR(pricing.base)} × {pricing.g} {pricing.g>1?"guests":"guest"}</span>
-//                     <span className="font-medium">{INR(pricing.subtotal)}</span>
-//                   </div>
-//                   <div className="flex items-center justify-between py-1"><span>Tax (18%)</span><span className="font-medium">{INR(pricing.tax)}</span></div>
-//                   <div className="flex items-center justify-between py-1"><span>Service fee</span><span className="font-medium">{INR(pricing.fee)}</span></div>
-//                   {pricing.promoOff>0 && (
-//                     <div className="flex items-center justify-between py-1">
-//                       <span className="inline-flex items-center gap-1">Promo</span>
-//                       <span className="font-medium text-emerald-700">−{INR(pricing.promoOff)}</span>
-//                     </div>
-//                   )}
-//                   <div className="border-t border-gray-200 dark:border-gray-700 my-2"/>
-//                   <div className="flex items-center justify-between text-lg font-bold">
-//                     <span>Total</span><span className="text-primary-600 dark:text-primary-400">{INR(pricing.total)}</span>
-//                   </div>
-//                   <div className="text-xs text-gray-500">No payment due today</div>
-//                 </div>
-//               </CardContent></Card>
-//             </div>
-//           </div>
-//         </div>
-//       </div>
-//     </div>
-//   );
-// }
 import React, { useEffect, useMemo, useState } from "react";
 import { useSearchParams, useNavigate, Link } from "react-router-dom";
 import {
   AlertTriangle, Users, Mail, Phone, User, Loader2, MapPin, Clock,
-  CreditCard, CheckCircle2, Star, Info, ChevronRight, ArrowLeft, X,
-  ChevronLeft, ChevronRight as ChevronRightIcon, Calendar as CalendarIcon,
+  CreditCard, CheckCircle2, Star, Info, ArrowLeft, X, ChevronRight,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
+import DatePicker from "@/components/ui/DatePicker";
 import { api, useAuthStore } from "@/store/auth";
+import { initiateRazorpayPayment } from "@/utils/razorpayUtils";
 import toast from "react-hot-toast";
 
-/* ---------- utils ---------- */
-const INR = (n) => new Intl.NumberFormat("en-IN", {
-  style: "currency", 
-  currency: "INR", 
-  maximumFractionDigits: 0 
-}).format(Number(n || 0));
+/* ── helpers ─────────────────────────────────────────────────────────────── */
+const INR = (n) =>
+  new Intl.NumberFormat("en-IN", {
+    style: "currency", currency: "INR", maximumFractionDigits: 0,
+  }).format(Number(n || 0));
 
 const fmtDuration = (m) => {
-  if (!m) return "N/A";
+  if (!m) return null;
   if (m < 60) return `${m}m`;
   const h = Math.floor(m / 60), r = m % 60;
   return r ? `${h}h ${r}m` : `${h}h`;
 };
 
-const isApproved = (d) => d?.approved === true || d?.isApproved === true || d?.status === "approved";
+const todayISO = () => new Date().toISOString().split("T")[0];
 
-/* ---------- Calendar Component ---------- */
-const addMonths = (d, n) => {
-  const x = new Date(d);
-  x.setMonth(x.getMonth() + n);
-  x.setDate(1);
-  return x;
-};
+const PROMO_CODES = { WELCOME10: 0.10, SAVE5: 0.05 };
 
-const daysInMonth = (d) => new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
-const toISODate = (d) => d.toISOString().split("T")[0];
-const todayISO = () => {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  return d.toISOString().split("T")[0];
-};
-
-function CalendarPicker({ value, onChange, label = "Date", required = true }) {
-  const min = new Date();
-  min.setHours(0, 0, 0, 0);
-  const [view, setView] = useState(() => value ? new Date(value) : min);
-  
-  const firstDow = (new Date(view.getFullYear(), view.getMonth(), 1).getDay() + 6) % 7;
-  const total = daysInMonth(view);
-  
-  const weeks = [];
-  let day = 1 - firstDow;
-  while (day <= total) {
-    const row = [];
-    for (let i = 0; i < 7; i++) {
-      row.push(new Date(view.getFullYear(), view.getMonth(), day++));
-    }
-    weeks.push(row);
-  }
-  
-  const sel = value ? new Date(value) : null;
-
-  return (
-    <div>
-      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-        {label} {required && <span className="text-red-500">*</span>}
-      </label>
-      <div className="rounded-lg border border-gray-300 dark:border-gray-700 overflow-hidden">
-        <div className="flex items-center justify-between px-3 py-2 bg-gray-50 dark:bg-gray-800">
-          <button
-            type="button"
-            onClick={() => setView((v) => addMonths(v, -1))}
-            className="p-1 rounded hover:bg-white/70 dark:hover:bg-gray-700"
-            aria-label="Previous month"
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </button>
-          <div className="flex items-center gap-2 font-semibold">
-            <CalendarIcon className="h-4 w-4" />
-            {view.toLocaleDateString("en-IN", { month: "long", year: "numeric" })}
-          </div>
-          <button
-            type="button"
-            onClick={() => setView((v) => addMonths(v, 1))}
-            className="p-1 rounded hover:bg-white/70 dark:hover:bg-gray-700"
-            aria-label="Next month"
-          >
-            <ChevronRightIcon className="h-5 w-5" />
-          </button>
-        </div>
-        <div className="grid grid-cols-7 text-xs text-center py-2">
-          {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
-            <div key={d} className="text-gray-500">{d}</div>
-          ))}
-        </div>
-        <div className="grid grid-cols-7 gap-1 p-2">
-          {weeks.map((row, ri) =>
-            row.map((d, ci) => {
-              const disabled = d < min || d.getMonth() !== view.getMonth();
-              const selected = sel && d.toDateString() === sel.toDateString();
-              return (
-                <button
-                  key={`${ri}-${ci}`}
-                  type="button"
-                  disabled={disabled}
-                  aria-pressed={selected}
-                  onClick={() => onChange(toISODate(d))}
-                  className={[
-                    "h-10 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500",
-                    disabled
-                      ? "text-gray-400 cursor-not-allowed"
-                      : "hover:bg-primary-50 dark:hover:bg-primary-900/30",
-                    selected
-                      ? "bg-primary-600 text-white hover:bg-primary-600"
-                      : "bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700",
-                  ].join(" ")}
-                >
-                  {d.getDate()}
-                </button>
-              );
-            })
-          )}
-        </div>
-      </div>
-      {/* Mobile fallback */}
-      <input
-        type="date"
-        value={value || ""}
-        min={todayISO()}
-        onChange={(e) => onChange(e.target.value)}
-        className="mt-2 w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg dark:bg-gray-800 dark:text-white md:hidden"
-      />
-    </div>
-  );
-}
-
-/* ---------- Main Booking Flow Component ---------- */
+/* ── component ───────────────────────────────────────────────────────────── */
 export default function BookingFlow() {
   const nav = useNavigate();
   const [q] = useSearchParams();
   const { isAuthenticated, user } = useAuthStore();
 
-  const itemId = q.get("activity") || q.get("place");
+  const itemId   = q.get("activity") || q.get("place");
   const itemType = q.get("place") ? "place" : "activity";
 
-  const [loading, setLoading] = useState(true);
-  const [item, setItem] = useState(null);
-  const [error, setError] = useState("");
-  const [step, setStep] = useState(0);
+  const [loading,    setLoading]    = useState(true);
+  const [item,       setItem]       = useState(null);
+  const [error,      setError]      = useState("");
+  const [step,       setStep]       = useState(0);
   const [submitting, setSubmitting] = useState(false);
 
-  const [date, setDate] = useState(q.get("date") || "");
+  // Step 0
+  const [date,   setDate]   = useState(q.get("date")   || "");
   const [guests, setGuests] = useState(q.get("guests") || "1");
-  const [name, setName] = useState(user?.name || "");
-  const [email, setEmail] = useState(user?.email || "");
-  const [phone, setPhone] = useState(user?.phone || "");
-  const [special, setSpecial] = useState("");
-  const [agree, setAgree] = useState(false);
-  const [promo, setPromo] = useState("");
+  const [promo,  setPromo]  = useState("");
 
+  // Step 1
+  const [name,    setName]    = useState(user?.name  || "");
+  const [email,   setEmail]   = useState(user?.email || "");
+  const [phone,   setPhone]   = useState(user?.phone || "");
+  const [special, setSpecial] = useState("");
+
+  // Step 2
+  const [agree, setAgree] = useState(false);
+
+  /* fetch item details */
   useEffect(() => {
-    let ignore = false;
+    let cancelled = false;
     (async () => {
-      if (!itemId) {
-        setError("No item selected.");
-        setLoading(false);
-        return;
-      }
+      if (!itemId) { setError("No item selected."); setLoading(false); return; }
       try {
-        setLoading(true);
-        setError("");
-        let d;
+        setLoading(true); setError("");
+        let data;
         try {
-          const r = await api.get(`/activities/${itemId}`, { silenceToast: true });
-          d = r?.data?.data || r?.data || r;
+          const r = await api.get(`/activities/${itemId}`);
+          data = r?.data?.data?.activity || r?.data?.data || r?.data;
         } catch {
-          const r = await api.get(`/places/${itemId}`, { silenceToast: true });
-          d = r?.data?.data || r?.data?.place || r?.data || r;
+          const r = await api.get(`/places/${itemId}`);
+          data = r?.data?.data?.place || r?.data?.data || r?.data;
         }
-        if (d && (d.approved === undefined || isApproved(d))) {
-          setItem(d);
-        } else {
-          setItem(null);
-          setError("This item is not available for booking.");
-        }
-      } catch (err) {
-        console.error("Failed to load item:", err);
-        setError("Failed to load item details.");
+        if (!cancelled) setItem(data);
+      } catch {
+        if (!cancelled) setError("Failed to load item details.");
       } finally {
-        if (!ignore) setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     })();
-    return () => {
-      ignore = true;
-    };
+    return () => { cancelled = true; };
   }, [itemId]);
 
+  /* pricing */
   const pricing = useMemo(() => {
-    const base = typeof item?.basePrice === "number" ? item.basePrice : 99;
-    const g = Number(guests || 1);
+    const base    = typeof item?.basePrice === "number" ? item.basePrice
+                  : typeof item?.price     === "number" ? item.price
+                  : 99;
+    const g        = Number(guests || 1);
     const subtotal = base * g;
-    const tax = Math.round(subtotal * 0.18);
-    const fee = Math.round(subtotal * 0.05);
-    const promoOff = promo.trim().toUpperCase() === "WELCOME10" ? Math.floor(subtotal * 0.1) : 0;
-    const total = Math.max(0, subtotal + tax + fee - promoOff);
+    const tax      = Math.round(subtotal * 0.18);
+    const fee      = Math.round(subtotal * 0.05);
+    const disc     = PROMO_CODES[promo.trim().toUpperCase()] || 0;
+    const promoOff = disc ? Math.floor(subtotal * disc) : 0;
+    const total    = Math.max(0, subtotal + tax + fee - promoOff);
     return { base, g, subtotal, tax, fee, promoOff, total };
   }, [item, guests, promo]);
 
-  const validDate = date && new Date(date).setHours(0, 0, 0, 0) >= new Date().setHours(0, 0, 0, 0);
-  const validGuests = Number(guests) >= 1;
-  const validContact = name.trim().length >= 2 && /\S+@\S+\.\S+/.test(email) && phone.replace(/\D/g, "").length >= 10;
-  const canNext = step === 0 ? (validDate && validGuests) : step === 1 ? validContact : agree;
+  /* validation */
+  const validDate    = !!date && date >= todayISO();
+  const validGuests  = Number(guests) >= 1;
+  const validContact = name.trim().length >= 2
+    && /\S+@\S+\.\S+/.test(email)
+    && phone.replace(/\D/g, "").length >= 10;
 
+  const canNext =
+    step === 0 ? validDate && validGuests
+    : step === 1 ? validContact
+    : agree;
+
+  /* submit — creates booking then triggers Razorpay */
   const submit = async () => {
-    if (!agree) {
-      toast.error("Please agree to the terms");
-      return;
-    }
+    if (!agree) { toast.error("Please agree to the terms"); return; }
     if (!isAuthenticated) {
-      nav("/auth/login", {
-        state: {
-          returnTo: `/booking?${itemType}=${itemId}&date=${date}&guests=${guests}`,
-        },
-      });
+      nav("/auth/login", { state: { returnTo: `/booking?${itemType}=${itemId}&date=${date}&guests=${guests}` } });
       return;
     }
+
     try {
       setSubmitting(true);
       setError("");
-      
-      const payload = {
-        activityId: itemType === "activity" ? itemId : undefined,
-        placeId: itemType === "place" ? itemId : undefined,
-        date: new Date(date).toISOString(),
-        participants: Number(guests),
-        peopleCount: Number(guests),
-        participantDetails: [
-          {
-            name: name.trim(),
-            email: email.trim(),
-            phone: phone.trim(),
-          },
-        ],
-        customer: {
-          name: name.trim(),
-          email: email.trim(),
-          phone: phone.trim(),
-        },
-        specialRequests: special?.trim() || "",
-        totalAmount: pricing.total,
+
+      // ── 1. Create booking (status: pending, paymentStatus: pending) ───────
+      const bookingPayload = {
+        [`${itemType}Id`]: itemId,
+        date,
+        participants:      Number(guests),
+        peopleCount:       Number(guests),
+        participantDetails: [{ name: name.trim(), email: email.trim(), phone: phone.trim() }],
+        customer:           { name: name.trim(), email: email.trim(), phone: phone.trim() },
+        specialRequests:    special.trim(),
         pricing: {
-          basePrice: pricing.base,
-          subtotal: pricing.subtotal,
-          tax: pricing.tax,
+          basePrice:  pricing.base,
+          subtotal:   pricing.subtotal,
+          tax:        pricing.tax,
           serviceFee: pricing.fee,
-          promoOff: pricing.promoOff,
-          total: pricing.total,
+          promoOff:   pricing.promoOff,
+          total:      pricing.total,
         },
+        totalAmount: pricing.total,
       };
 
-      console.log("Submitting booking:", payload);
+      const bookingRes = await api.post("/bookings", bookingPayload);
+      const bookingData = bookingRes?.data?.data || bookingRes?.data;
+      const booking     = bookingData?.booking || bookingData;
+      const bookingId   = booking?._id || booking?.id;
 
-      const r = await api.post("/bookings", payload);
-      const data = r?.data?.data || r?.data;
-      const id = data?.booking?._id || data?.booking?.id || data?._id || data?.id;
-      
-      if (!id) {
-        console.error("No booking ID in response:", data);
-        throw new Error("No booking id in response");
-      }
-      
-      toast.success("Booking created successfully!");
-      nav(`/booking/confirm?id=${id}`, { replace: true });
+      if (!bookingId) throw new Error("Booking creation failed — no ID returned");
+
+      // ── 2. Create Razorpay order (amount from DB, not client) ─────────────
+      const orderRes = await api.post("/payments/create-order", { bookingId });
+      const { orderId, amount, currency, keyId } = orderRes.data?.data || {};
+
+      if (!orderId) throw new Error("Failed to create payment order");
+
+      // ── 3. Open Razorpay checkout ─────────────────────────────────────────
+      await new Promise((resolve, reject) => {
+        initiateRazorpayPayment({
+          orderId,
+          // amount from server is already in paise; divide by 100 for the utility
+          amount:      amount / 100,
+          currency:    currency || "INR",
+          keyId,
+          bookingId,
+          activityName: item?.title || item?.name || "Tour Booking",
+          prefill:     { name: name.trim(), email: email.trim(), phone: phone.trim() },
+
+          // ── 4. On success: verify signature server-side ───────────────────
+          onSuccess: async ({ orderId: rzpOrderId, paymentId, signature }) => {
+            try {
+              await api.post("/payments/verify", {
+                orderId:   rzpOrderId,
+                paymentId,
+                signature,
+                bookingId,
+              });
+              toast.success("Payment successful! Booking confirmed.");
+              nav(`/booking/confirm?id=${bookingId}`, { replace: true });
+              resolve();
+            } catch (err) {
+              const msg = err?.response?.data?.message || "Payment verification failed";
+              toast.error(msg);
+              reject(new Error(msg));
+            }
+          },
+
+          onFailure: (err) => {
+            const msg = err?.description || err?.message || "Payment failed or cancelled";
+            toast.error(msg);
+            reject(new Error(msg));
+          },
+        });
+      });
+
     } catch (e) {
-      console.error("Booking submission error:", e);
-      const msg = e?.response?.data?.message || e?.message || "Unable to create booking.";
+      const msg = e?.response?.data?.message || e?.message || "Something went wrong";
       setError(msg);
-      toast.error(msg);
+      if (!msg.toLowerCase().includes("cancel")) toast.error(msg);
     } finally {
       setSubmitting(false);
     }
   };
 
+  /* ── loading / error states ─────────────────────────────────────────────── */
   if (loading) {
     return (
-      <div className="min-h-screen bg-transparent grid place-items-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 grid place-items-center">
         <div className="text-center">
           <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-primary-600" />
-          <p className="text-gray-600 dark:text-gray-400">Loading details...</p>
+          <p className="text-gray-600 dark:text-gray-400">Loading details…</p>
         </div>
       </div>
     );
@@ -710,71 +223,58 @@ export default function BookingFlow() {
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Item Unavailable</h2>
         <p className="text-gray-600 dark:text-gray-400 mb-6">{error || "This item is not available for booking."}</p>
         <div className="flex gap-3 justify-center">
-          <Button as={Link} to="/search" variant="outline">
-            Browse Activities
-          </Button>
-          <Button as={Link} to="/">
-            Go Home
-          </Button>
+          <Button as={Link} to="/search" variant="outline">Browse Activities</Button>
+          <Button as={Link} to="/">Go Home</Button>
         </div>
       </div>
     );
   }
 
-  const title = item.title || item.name || "Untitled";
-  const city = item?.place?.city || item?.city;
-  const duration = item.duration || (item.durationMinutes ? fmtDuration(item.durationMinutes) : null);
-  const rating = item?.rating?.avg;
+  const title    = item.title || item.name || "Experience";
+  const city     = item?.place?.city || item?.city;
+  const duration = item.duration || fmtDuration(item.durationMinutes);
+  const rating   = item?.rating?.avg || item?.averageRating;
 
+  const STEPS = ["Details", "Contact", "Payment"];
+
+  /* ── render ─────────────────────────────────────────────────────────────── */
   return (
-    <div className="min-h-screen bg-transparent py-8">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+        {/* Back link */}
         <Link
-          to={itemType === "place" ? `/places/${itemId}` : `/activities/${itemId}`}
+          to={`/${itemType === "place" ? "places" : "activities"}/${itemId}`}
           className="inline-flex items-center gap-2 text-primary-600 hover:text-primary-700 dark:text-primary-400 text-sm font-medium mb-6"
         >
           <ArrowLeft className="h-4 w-4" /> Back to {itemType}
         </Link>
 
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Complete Your Booking</h1>
-          <p className="text-gray-600 dark:text-gray-400">Follow the steps to confirm your reservation</p>
-        </div>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Complete Your Booking</h1>
+        <p className="text-gray-600 dark:text-gray-400 mb-8">Follow the steps to confirm and pay for your reservation</p>
 
         {/* Stepper */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between max-w-2xl">
-            {["Details", "Contact", "Review"].map((label, i) => {
-              const done = i < step;
+        <div className="mb-8 max-w-xl">
+          <div className="flex items-center">
+            {STEPS.map((label, i) => {
+              const done   = i < step;
               const active = i === step;
               return (
                 <React.Fragment key={label}>
-                  <div className="flex flex-col items-center flex-1">
-                    <div
-                      className={`w-10 h-10 rounded-full grid place-items-center text-sm font-semibold transition-all ${
-                        done
-                          ? "bg-primary-600 text-white"
-                          : active
-                          ? "bg-primary-100 text-primary-600 ring-4 ring-primary-200 dark:bg-primary-900/20 dark:text-primary-400"
-                          : "bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-600"
-                      }`}
-                    >
+                  <div className="flex flex-col items-center">
+                    <div className={`w-10 h-10 rounded-full grid place-items-center text-sm font-semibold transition-all ${
+                      done   ? "bg-primary-600 text-white"
+                      : active ? "bg-primary-100 text-primary-700 ring-4 ring-primary-200 dark:bg-primary-900/30 dark:text-primary-300"
+                              : "bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-600"
+                    }`}>
                       {done ? <CheckCircle2 className="h-5 w-5" /> : i + 1}
                     </div>
-                    <span
-                      className={`mt-2 text-xs font-medium ${
-                        active ? "text-gray-900 dark:text-white" : "text-gray-500 dark:text-gray-400"
-                      }`}
-                    >
+                    <span className={`mt-2 text-xs font-medium ${active ? "text-gray-900 dark:text-white" : "text-gray-500"}`}>
                       {label}
                     </span>
                   </div>
-                  {i < 2 && (
-                    <div
-                      className={`flex-1 h-1 -mt-8 rounded-full ${
-                        done ? "bg-primary-600" : "bg-gray-200 dark:bg-gray-700"
-                      }`}
-                    />
+                  {i < STEPS.length - 1 && (
+                    <div className={`flex-1 h-1 mx-2 -mt-5 rounded-full ${done ? "bg-primary-600" : "bg-gray-200 dark:bg-gray-700"}`} />
                   )}
                 </React.Fragment>
               );
@@ -783,65 +283,57 @@ export default function BookingFlow() {
         </div>
 
         <div className="grid lg:grid-cols-3 gap-8">
-          {/* Main Content */}
+          {/* ── Main ─────────────────────────────────────────────────────── */}
           <div className="lg:col-span-2 space-y-6">
+
             {/* Item summary */}
-            <Card className="border-purple-100/70 dark:border-[#2a1a45] bg-white/90 dark:bg-[#1a1230]/90 backdrop-blur shadow-lg">
+            <Card>
               <CardContent className="p-6">
                 <div className="flex gap-4">
-                  <div className="w-20 h-20 rounded-lg bg-gradient-to-br from-primary-100 to-primary-200 dark:from-primary-900/20 dark:to-primary-800/20 grid place-items-center">
-                    {itemType === "place" ? (
-                      <MapPin className="h-8 w-8 text-primary-600" />
-                    ) : (
-                      <Star className="h-8 w-8 text-amber-500" />
-                    )}
+                  <div className="w-20 h-20 rounded-xl bg-gradient-to-br from-primary-100 to-blue-100 dark:from-primary-900/20 dark:to-blue-900/20 grid place-items-center text-3xl flex-shrink-0">
+                    {itemType === "place" ? "📍" : "🎯"}
                   </div>
                   <div className="flex-1 min-w-0">
                     <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-2">{title}</h2>
                     <div className="flex flex-wrap items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
-                      {city && (
-                        <span className="inline-flex items-center gap-1">
-                          <MapPin className="h-4 w-4" />
-                          {city}
-                        </span>
-                      )}
-                      {duration && (
-                        <span className="inline-flex items-center gap-1">
-                          <Clock className="h-4 w-4" />
-                          {duration}
-                        </span>
-                      )}
-                      {rating && (
-                        <span className="inline-flex items-center gap-1">
-                          <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                          {Number(rating).toFixed(1)}
-                        </span>
-                      )}
+                      {city     && <span className="inline-flex items-center gap-1"><MapPin className="h-4 w-4" />{city}</span>}
+                      {duration && <span className="inline-flex items-center gap-1"><Clock  className="h-4 w-4" />{duration}</span>}
+                      {rating   && <span className="inline-flex items-center gap-1"><Star  className="h-4 w-4 fill-yellow-400 text-yellow-400" />{Number(rating).toFixed(1)}</span>}
                     </div>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
+            {/* Error banner */}
             {error && (
-              <div className="rounded-lg border border-red-200 bg-red-50 dark:border-red-900/50 dark:bg-red-900/20 p-4">
-                <div className="flex gap-3">
-                  <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0" />
-                  <div className="text-sm text-red-800 dark:text-red-200">{error}</div>
-                </div>
+              <div className="rounded-lg border border-red-200 bg-red-50 dark:border-red-900/50 dark:bg-red-900/20 p-4 flex gap-3">
+                <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
               </div>
             )}
 
             {/* Step card */}
-            <Card className="border-purple-100/70 dark:border-[#2a1a45] bg-white/90 dark:bg-[#1a1230]/90 backdrop-blur shadow-lg">
+            <Card>
               <CardContent className="p-6 space-y-6">
+
+                {/* Step 0: Details */}
                 {step === 0 && (
                   <div className="space-y-6">
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                      Select Date & Guests
-                    </h3>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Select Date & Guests</h3>
+
                     <div className="grid md:grid-cols-2 gap-4">
-                      <CalendarPicker value={date} onChange={setDate} />
+                      <div>
+                        <DatePicker
+                          label={<>Date <span className="text-red-500">*</span></>}
+                          value={date}
+                          min={todayISO()}
+                          onChange={setDate}
+                          placeholder="Choose a date"
+                          error={date && !validDate ? "Date must be today or later" : ""}
+                        />
+                      </div>
+
                       <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                           Guests <span className="text-red-500">*</span>
@@ -851,62 +343,45 @@ export default function BookingFlow() {
                           <select
                             value={guests}
                             onChange={(e) => setGuests(e.target.value)}
-                            className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent appearance-none dark:bg-gray-800 dark:text-white bg-white"
+                            className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent appearance-none dark:bg-gray-800 dark:text-white"
                           >
                             {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
-                              <option key={n} value={n}>
-                                {n} {n > 1 ? "guests" : "guest"}
-                              </option>
+                              <option key={n} value={n}>{n} {n > 1 ? "guests" : "guest"}</option>
                             ))}
                           </select>
                         </div>
-                        {!validGuests && (
-                          <p className="mt-1 text-sm text-red-600 dark:text-red-400 flex items-center gap-1">
-                            <X className="h-3 w-3" />
-                            At least 1 guest
-                          </p>
-                        )}
                       </div>
                     </div>
 
-                    <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                      <div className="flex gap-2">
-                        <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-                        <div className="text-sm text-blue-800 dark:text-blue-200">
-                          <p className="font-medium mb-1">Flexible Booking</p>
-                          <p>Free cancellation up to 24 hours before your activity starts</p>
-                        </div>
+                    <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg flex gap-2">
+                      <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                      <div className="text-sm text-blue-800 dark:text-blue-200">
+                        <p className="font-medium mb-1">Flexible Booking</p>
+                        <p>Free cancellation up to 24 hours before your activity starts.</p>
                       </div>
                     </div>
                   </div>
                 )}
 
+                {/* Step 1: Contact */}
                 {step === 1 && (
                   <div className="space-y-6">
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                      Contact Information
-                    </h3>
-                    <div className="grid md:grid-cols-2 gap-4 ">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Contact Information</h3>
+                    <div className="grid md:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium  text-gray-700 dark:text-gray-300 mb-1.5">
-                          Full Name  <span className="text-red-500">*</span>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                          Full Name <span className="text-red-500">*</span>
                         </label>
                         <div className="relative">
                           <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                           <input
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
-                            className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-800 dark:text-white bg-white"
-                            placeholder="e.g., Priya Sharma"
+                            value={name} onChange={(e) => setName(e.target.value)}
+                            placeholder="e.g. Priya Sharma"
+                            className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-800 dark:text-white"
                           />
                         </div>
-                        {name.trim().length < 2 && (
-                          <p className="mt-1 text-sm text-red-600 dark:text-red-400 flex items-center gap-1">
-                            <X className="h-3 w-3" />
-                            Name is required
-                          </p>
-                        )}
                       </div>
+
                       <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                           Email <span className="text-red-500">*</span>
@@ -914,20 +389,13 @@ export default function BookingFlow() {
                         <div className="relative">
                           <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                           <input
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            type="email"
-                            className="bg-white w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-800 dark:text-white"
+                            type="email" value={email} onChange={(e) => setEmail(e.target.value)}
                             placeholder="name@example.com"
+                            className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-800 dark:text-white"
                           />
                         </div>
-                        {!/\S+@\S+\.\S+/.test(email) && (
-                          <p className="mt-1 text-sm text-red-600 dark:text-red-400 flex items-center gap-1">
-                            <X className="h-3 w-3" />
-                            Enter a valid email
-                          </p>
-                        )}
                       </div>
+
                       <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                           Phone <span className="text-red-500">*</span>
@@ -935,91 +403,105 @@ export default function BookingFlow() {
                         <div className="relative">
                           <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                           <input
-                            value={phone}
+                            type="tel" value={phone}
                             onChange={(e) => setPhone(e.target.value.replace(/[^\d+ -]/g, ""))}
-                            type="tel"
-                            className="bg-white w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-800 dark:text-white"
                             placeholder="+91 98765 43210"
+                            className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-800 dark:text-white"
                           />
                         </div>
-                        {phone.replace(/\D/g, "").length < 10 && (
-                          <p className="mt-1 text-sm text-red-600 dark:text-red-400 flex items-center gap-1">
-                            <X className="h-3 w-3" />
-                            Enter 10+ digits
-                          </p>
-                        )}
                       </div>
+
                       <div className="md:col-span-2">
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                           Special Requests
                         </label>
                         <textarea
-                          value={special}
-                          onChange={(e) => setSpecial(e.target.value)}
-                          rows={4}
-                          className="bg-white w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-800 dark:text-white"
-                          placeholder="(optional)"
+                          value={special} onChange={(e) => setSpecial(e.target.value)} rows={3}
+                          placeholder="Any dietary requirements, accessibility needs, etc. (optional)"
+                          className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-800 dark:text-white"
                         />
                       </div>
                     </div>
                   </div>
                 )}
 
+                {/* Step 2: Review & Pay */}
                 {step === 2 && (
                   <div className="space-y-6">
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                      Review & Confirm
-                    </h3>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Review & Pay</h3>
+
                     <div className="space-y-3 text-sm text-gray-700 dark:text-gray-300">
-                      <div className="flex items-center justify-between">
-                        <span>Date</span>
+                      <div className="flex justify-between py-1 border-b border-gray-100 dark:border-gray-700">
+                        <span className="text-gray-500">Activity</span>
+                        <span className="font-medium">{title}</span>
+                      </div>
+                      <div className="flex justify-between py-1 border-b border-gray-100 dark:border-gray-700">
+                        <span className="text-gray-500">Date</span>
                         <span className="font-medium">
-                          {date
-                            ? new Date(date).toLocaleDateString("en-IN", {
-                                weekday: "short",
-                                day: "numeric",
-                                month: "short",
-                                year: "numeric",
-                              })
-                            : "N/A"}
+                          {date ? new Date(date + "T00:00:00").toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", year: "numeric" }) : "—"}
                         </span>
                       </div>
-                      <div className="flex items-center justify-between">
-                        <span>Guests</span>
+                      <div className="flex justify-between py-1 border-b border-gray-100 dark:border-gray-700">
+                        <span className="text-gray-500">Guests</span>
                         <span className="font-medium">{guests}</span>
                       </div>
-                      <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg p-3">
-                        <CheckCircle2 className="h-4 w-4" /> Reserve now & pay later - no payment today.
+                      <div className="flex justify-between py-1 border-b border-gray-100 dark:border-gray-700">
+                        <span className="text-gray-500">Contact</span>
+                        <span className="font-medium">{name} · {email}</span>
                       </div>
-                      <label className="flex items-start gap-3">
-                        <input
-                          type="checkbox"
-                          checked={agree}
-                          onChange={(e) => setAgree(e.target.checked)}
-                          className="mt-1 h-4 w-4"
-                        />
-                        <span className="text-gray-600 dark:text-gray-300">
-                          I agree to the{" "}
-                          <a href="/terms" className="text-primary-600 dark:text-primary-400 underline">
-                            Terms & Conditions
-                          </a>{" "}
-                          and{" "}
-                          <a href="/cancellation" className="text-primary-600 dark:text-primary-400 underline">
-                            Cancellation Policy
-                          </a>
-                          .
-                        </span>
-                      </label>
-                      {!agree && (
-                        <p className="mt-1 text-sm text-red-600 dark:text-red-400 flex items-center gap-1">
-                          <X className="h-3 w-3" />
-                          You must agree to continue
-                        </p>
-                      )}
                     </div>
+
+                    {/* Promo code */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                        Promo Code
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          value={promo}
+                          onChange={(e) => setPromo(e.target.value.toUpperCase())}
+                          placeholder="e.g. WELCOME10"
+                          className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-primary-500 dark:bg-gray-800 dark:text-white text-sm uppercase"
+                        />
+                        {promo && PROMO_CODES[promo] && (
+                          <span className="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-emerald-50 text-emerald-700 text-sm font-medium">
+                            <CheckCircle2 className="h-4 w-4" /> Applied
+                          </span>
+                        )}
+                        {promo && !PROMO_CODES[promo] && (
+                          <span className="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-red-50 text-red-600 text-sm">
+                            <X className="h-4 w-4" /> Invalid
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Payment method notice */}
+                    <div className="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg flex gap-2">
+                      <CreditCard className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                      <div className="text-sm text-amber-800 dark:text-amber-200">
+                        <p className="font-medium mb-1">Secure Payment via Razorpay</p>
+                        <p>You'll be redirected to Razorpay's secure checkout. Supports UPI, cards, net banking, and wallets.</p>
+                      </div>
+                    </div>
+
+                    {/* T&C */}
+                    <label className="flex items-start gap-3 cursor-pointer">
+                      <input
+                        type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)}
+                        className="mt-1 h-4 w-4 accent-primary-600"
+                      />
+                      <span className="text-sm text-gray-600 dark:text-gray-300">
+                        I agree to the{" "}
+                        <a href="/terms" className="text-primary-600 dark:text-primary-400 underline">Terms & Conditions</a>{" "}
+                        and{" "}
+                        <a href="/cancellation" className="text-primary-600 dark:text-primary-400 underline">Cancellation Policy</a>.
+                      </span>
+                    </label>
                   </div>
                 )}
 
+                {/* Navigation buttons */}
                 <div className="pt-2 flex items-center justify-between">
                   <Button
                     variant="outline"
@@ -1028,14 +510,22 @@ export default function BookingFlow() {
                   >
                     Back
                   </Button>
+
                   {step < 2 ? (
                     <Button onClick={() => setStep((s) => s + 1)} disabled={!canNext}>
-                      Continue <ChevronRight className="h-4 w-4 ml-2" />
+                      Continue <ChevronRight className="h-4 w-4 ml-1" />
                     </Button>
                   ) : (
-                    <Button onClick={submit} disabled={!canNext || submitting}>
-                      {submitting ? "Creating Booking..." : "Confirm Booking"}{" "}
-                      <CreditCard className="h-4 w-4 ml-2" />
+                    <Button
+                      onClick={submit}
+                      disabled={!canNext || submitting}
+                      className="bg-gradient-to-r from-primary-600 to-blue-600 hover:from-primary-700 hover:to-blue-700"
+                    >
+                      {submitting ? (
+                        <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Processing…</>
+                      ) : (
+                        <><CreditCard className="h-4 w-4 mr-2" />Pay {INR(pricing.total)}</>
+                      )}
                     </Button>
                   )}
                 </div>
@@ -1043,44 +533,51 @@ export default function BookingFlow() {
             </Card>
           </div>
 
-          {/* Right rail summary */}
+          {/* ── Right rail: Order Summary ────────────────────────────────── */}
           <div className="lg:col-span-1">
-            <div className="lg:sticky lg:top-6 space-y-6">
-              <Card className="border-purple-100/70 dark:border-[#2a1a45] bg-white/90 dark:bg-[#1a1230]/90 backdrop-blur shadow-lg">
+            <div className="lg:sticky lg:top-6">
+              <Card className="shadow-lg">
                 <CardContent className="p-6 space-y-4">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-base font-semibold dark:text-white">Order Summary</h3>
+                    <h3 className="text-base font-semibold text-gray-900 dark:text-white">Order Summary</h3>
                     <span className="text-xs text-gray-500">Instant confirmation</span>
                   </div>
-                  <div className="text-sm text-gray-700 dark:text-gray-300">
-                    <div className="flex items-center justify-between py-1">
-                      <span>
-                        {INR(pricing.base)} x {pricing.g} {pricing.g > 1 ? "guests" : "guest"}
-                      </span>
+
+                  <div className="space-y-2 text-sm text-gray-700 dark:text-gray-300">
+                    <div className="flex justify-between py-1">
+                      <span className="text-gray-500">{INR(pricing.base)} × {pricing.g} guest{pricing.g > 1 ? "s" : ""}</span>
                       <span className="font-medium">{INR(pricing.subtotal)}</span>
                     </div>
-                    <div className="flex items-center justify-between py-1">
-                      <span>Tax (18%)</span>
+                    <div className="flex justify-between py-1">
+                      <span className="text-gray-500">Tax (18%)</span>
                       <span className="font-medium">{INR(pricing.tax)}</span>
                     </div>
-                    <div className="flex items-center justify-between py-1">
-                      <span>Service fee</span>
+                    <div className="flex justify-between py-1">
+                      <span className="text-gray-500">Service fee (5%)</span>
                       <span className="font-medium">{INR(pricing.fee)}</span>
                     </div>
                     {pricing.promoOff > 0 && (
-                      <div className="flex items-center justify-between py-1">
-                        <span className="inline-flex items-center gap-1">Promo</span>
-                        <span className="font-medium text-emerald-700">-{INR(pricing.promoOff)}</span>
+                      <div className="flex justify-between py-1 text-emerald-600 dark:text-emerald-400">
+                        <span>Promo discount</span>
+                        <span className="font-medium">−{INR(pricing.promoOff)}</span>
                       </div>
                     )}
-                    <div className="border-t border-gray-200 dark:border-gray-700 my-2" />
-                    <div className="flex items-center justify-between text-lg font-bold">
+                    <div className="flex justify-between pt-3 mt-1 border-t border-gray-200 dark:border-gray-700 text-base font-bold text-gray-900 dark:text-white">
                       <span>Total</span>
-                      <span className="text-primary-600 dark:text-primary-400">
-                        {INR(pricing.total)}
-                      </span>
+                      <span>{INR(pricing.total)}</span>
                     </div>
-                    <div className="text-xs text-gray-500">No payment due today</div>
+                  </div>
+
+                  <div className="space-y-2 pt-2">
+                    {[
+                      "🔒 Secure SSL payment",
+                      "🔄 Free cancellation (24h)",
+                      "📧 Instant email confirmation",
+                    ].map((f) => (
+                      <div key={f} className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2">
+                        {f}
+                      </div>
+                    ))}
                   </div>
                 </CardContent>
               </Card>

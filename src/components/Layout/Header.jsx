@@ -574,6 +574,7 @@ import {
 import { useAuthStore } from "@/store/auth";
 import { useUIStore } from "@/store/ui";
 import Button from "@/components/ui/Button";
+import { useTheme } from "@/hooks/useTheme";
 
 // Constants
 const ROLE_TO_DASHBOARD = Object.freeze({
@@ -626,18 +627,6 @@ const RECENTS_KEY = "tg_recent_searches_v1";
 const MAX_RECENTS = 8;
 
 // Hooks
-function useTheme() {
-  const [darkMode, setDarkMode] = useState(() => {
-    const saved = localStorage.getItem("theme");
-    return saved ? saved === "dark" : !!window.matchMedia?.("(prefers-color-scheme: dark)").matches;
-  });
-  useEffect(() => {
-    document.documentElement.classList.toggle("dark", darkMode);
-    localStorage.setItem("theme", darkMode ? "dark" : "light");
-  }, [darkMode]);
-  return [darkMode, setDarkMode];
-}
-
 function useRecentSearches() {
   const [recents, setRecents] = useState(() => {
     try {
@@ -862,7 +851,7 @@ function Header() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
 
-  const [darkMode, setDarkMode] = useTheme();
+  const { isDarkMode, toggleTheme } = useTheme();
   const { recents, saveRecent, clearRecents } = useRecentSearches();
 
   const userMenuRef = useRef(null);
@@ -958,15 +947,15 @@ function Header() {
           <div className="flex items-center space-x-3 sm:space-x-4">
             {/* Theme toggle */}
             <button
-              onClick={() => setDarkMode(prev => !prev)}
+              onClick={toggleTheme}
               className="group relative p-[2px] rounded-full bg-gradient-to-r from-primary-500 to-primary-700 shadow-md hover:shadow-lg transition-shadow"
               aria-label="Toggle dark mode"
               type="button"
             >
               <span className="flex items-center justify-between w-[72px] h-9 rounded-full bg-white/80 dark:bg-gray-900/80 backdrop-blur px-1.5 relative">
-                <span className={`absolute top-1 left-1 h-7 w-7 rounded-full bg-white dark:bg-gray-700 shadow-lg transition-transform duration-300 ${darkMode ? "translate-x-[2.25rem]" : ""}`} />
-                <Sun className={`h-4 w-4 z-10 transition-opacity ${darkMode ? "opacity-60" : "opacity-100"}`} />
-                <Moon className={`h-4 w-4 z-10 transition-opacity ${darkMode ? "opacity-100" : "opacity-60"}`} />
+                <span className={`absolute top-1 left-1 h-7 w-7 rounded-full bg-white dark:bg-gray-700 shadow-lg transition-transform duration-300 ${isDarkMode ? "translate-x-[2.25rem]" : ""}`} />
+                <Sun className={`h-4 w-4 z-10 transition-opacity ${isDarkMode ? "opacity-60" : "opacity-100"}`} />
+                <Moon className={`h-4 w-4 z-10 transition-opacity ${isDarkMode ? "opacity-100" : "opacity-60"}`} />
               </span>
             </button>
 

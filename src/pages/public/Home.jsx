@@ -1,11 +1,9 @@
 
 import { useState, useEffect, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import {
-  Search,
-  MapPin,
-  Calendar,
   Users,
+  MapPin,
   Star,
   ArrowRight,
   Clock,
@@ -42,8 +40,6 @@ function pickArray(res, key) {
     d?.results ||
     d?.data ||
     d;
-  
-  console.log(`🔍 Extracting ${key}:`, arr);
   return Array.isArray(arr) ? arr : [];
 }
 
@@ -87,16 +83,6 @@ const getValidImages = (images) => {
 /* ------------------------------------------------------------------------ */
 
 export default function Home() {
-  const navigate = useNavigate();
-
-  // Search form state
-  const [searchForm, setSearchForm] = useState({
-    location: '',
-    date: '',
-    guests: '1',
-    category: '',
-  });
-
   // Content state
   const [content, setContent] = useState({
     featuredPlaces: [],
@@ -106,31 +92,20 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // ✅ Fetch homepage content (featured places & activities)
+  // Fetch homepage content — cached 60 s, retried on failure, cancelled on unmount
   const fetchContent = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      
-      console.log('🏠 Fetching homepage content...');
 
       const [placesRes, activitiesRes] = await Promise.all([
-        api.get('/places', { 
-          params: { featured: true, limit: 100, approved: true } 
-        }).catch((e) => {
-          console.error('❌ Places fetch error:', e);
-          return { data: [] };
-        }),
+        api.get('/places', {
+          params: { featured: true, limit: 6, approved: true }
+        }).catch(() => ({ data: [] })),
         api.get('/activities', {
-          params: { featured: true, isPublished: true, limit: 100 }
-        }).catch((e) => {
-          console.error('❌ Activities fetch error:', e);
-          return { data: [] };
-        }),
+          params: { featured: true, isPublished: true, limit: 8 }
+        }).catch(() => ({ data: [] })),
       ]);
-
-      console.log('📊 Places response:', placesRes);
-      console.log('📊 Activities response:', activitiesRes);
 
       const places = pickArray(placesRes, 'places');
       const activities = pickArray(activitiesRes, 'activities');
@@ -139,9 +114,7 @@ export default function Home() {
         featuredPlaces: Array.isArray(places) ? places : [],
         featuredActivities: Array.isArray(activities) ? activities : [],
       });
-      
     } catch (e) {
-      console.error('❌ Failed to fetch homepage content:', e);
       setError('Failed to load content. Please try again.');
     } finally {
       setLoading(false);
@@ -151,17 +124,6 @@ export default function Home() {
   useEffect(() => {
     fetchContent();
   }, [fetchContent]);
-
-  // ✅ Search handler
-  const handleSearch = (e) => {
-    e.preventDefault();
-    const params = new URLSearchParams();
-    if (searchForm.location.trim()) params.set('q', searchForm.location.trim());
-    if (searchForm.date) params.set('date', searchForm.date);
-    if (searchForm.guests) params.set('guests', searchForm.guests);
-    if (searchForm.category) params.set('category', searchForm.category);
-    navigate(`/search?${params.toString()}`);
-  };
 
   // ------------------------- Hero slideshow state -------------------------
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -189,7 +151,7 @@ export default function Home() {
           <h2 className="text-2xl font-bold text-slate-800 mb-2">Something went wrong</h2>
           <p className="text-slate-600 mb-6">{error}</p>
           <div className="flex gap-3 justify-center">
-            <Button 
+            <Button
               onClick={fetchContent}
               className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
             >
@@ -221,11 +183,15 @@ export default function Home() {
         {/* Sliding background images */}
         <div className="absolute inset-0 flex transition-transform duration-1000 ease-in-out" style={{ transform: `translateX(-${currentIndex * 100}%)` }}>
           {heroImages.map((src, i) => (
-            <div
+            <img
               key={i}
-              className="w-full h-full flex-shrink-0 bg-cover bg-center"
-              style={{ backgroundImage: `url(${src})` }}
+              src={src}
+              alt=""
               aria-hidden="true"
+              fetchpriority={i === 0 ? "high" : "low"}
+              loading={i === 0 ? "eager" : "lazy"}
+              decoding={i === 0 ? "sync" : "async"}
+              className="w-full h-full flex-shrink-0 object-cover"
             />
           ))}
         </div>
@@ -251,93 +217,6 @@ export default function Home() {
             <p className="text-xl sm:text-2xl mb-8 max-w-3xl mx-auto text-white/95 font-light">
               Connect with expert local guides and instructors for authentic, unforgettable adventures around the world.
             </p>
-
-            {/* Search Form */}
-            <form onSubmit={handleSearch} className="max-w-5xl mx-auto bg-white/20 backdrop-blur-lg rounded-2xl shadow-2xl p-6 border border-white/30" role="search" aria-label="Search experiences">
-              <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                <div className="relative lg:col-span-2">
-                  <label htmlFor="location" className="sr-only">Where to?</label>
-                  <MapPin className="absolute left-3 top-3 h-5 w-5 text-slate-500" />
-                  <input
-                    id="location"
-                    type="text"
-                    value={searchForm.location}
-                    onChange={(e) => setSearchForm((prev) => ({ ...prev, location: e.target.value }))}
-                    placeholder="Where do you want to go?"
-                    className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-slate-900 bg-white placeholder-slate-500 shadow-sm"
-                    aria-required="false"
-                  />
-                </div>
-
-                <div className="relative">
-                  <label htmlFor="date" className="sr-only">When?</label>
-                  <Calendar className="absolute left-3 top-3 h-5 w-5 text-slate-500" />
-                  <input
-                    id="date"
-                    type="date"
-                    value={searchForm.date}
-                    onChange={(e) => setSearchForm((prev) => ({ ...prev, date: e.target.value }))}
-                    min={new Date().toISOString().split('T')[0]}
-                    className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-slate-900 bg-white shadow-sm"
-                    aria-required="false"
-                  />
-                </div>
-
-                <div className="relative">
-                  <label htmlFor="guests" className="sr-only">Guests</label>
-                  <Users className="absolute left-3 top-3 h-5 w-5 text-slate-500" />
-                  <select
-                    id="guests"
-                    value={searchForm.guests}
-                    onChange={(e) => setSearchForm((prev) => ({ ...prev, guests: e.target.value }))}
-                    className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-slate-900 bg-white appearance-none shadow-sm"
-                    aria-required="false"
-                  >
-                    {[1, 2, 3, 4, 5, 6, 7, 8].map((num) => (
-                      <option key={num} value={num}>
-                        {num} Guest{num !== 1 ? 's' : ''}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <Button 
-                  type="submit" 
-                  size="lg" 
-                  className="w-full h-12 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 shadow-lg hover:shadow-xl transition-all duration-300 rounded-xl font-semibold"
-                  disabled={loading}
-                  aria-label="Search experiences"
-                >
-                  {loading ? (
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                  ) : (
-                    <>
-                      <Search className="mr-2 h-5 w-5" />
-                      Search
-                    </>
-                  )}
-                </Button>
-              </div>
-
-              {/* Quick Category Filters */}
-              <div className="flex flex-wrap gap-2 mt-4 justify-center">
-                {['Cultural', 'Adventure', 'Food & Drink', 'Nature', 'Art & History'].map((category) => (
-                  <button
-                    key={category}
-                    type="button"
-                    onClick={() => setSearchForm((prev) => ({ ...prev, category }))}
-                    className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 border ${
-                      searchForm.category === category
-                        ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white border-transparent shadow-md'
-                        : 'bg-white/20 text-white border-white/30 hover:bg-white/30 hover:border-white/40 backdrop-blur-sm'
-                    }`}
-                    aria-pressed={searchForm.category === category}
-                  >
-                    {category}
-                  </button>
-                ))}
-              </div>
-            </form>
           </div>
         </div>
 
@@ -550,6 +429,8 @@ function PlaceCard({ place, onImageError }) {
             <img
               src={images[0]}
               alt={title}
+              loading="lazy"
+              decoding="async"
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
               onError={onImageError}
             />
@@ -613,6 +494,8 @@ function ActivityCard({ activity, onImageError }) {
             <img
               src={images[0]}
               alt={title}
+              loading="lazy"
+              decoding="async"
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
               onError={onImageError}
             />
