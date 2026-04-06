@@ -124,7 +124,7 @@ const Login = () => {
           break;
         case 'traveller':
         default:
-          navigate('/', { replace: true });
+          navigate('/dashboard/traveller', { replace: true });
           break;
       }
     } else {
@@ -157,7 +157,15 @@ const Login = () => {
 
       if (result.success) {
         toast.success(`Welcome, ${result.user.name}! (Demo Login)`);
-        navigate('/', { replace: true });
+        const role = result.user.role;
+        const rolePaths = {
+          admin: '/dashboard/admin',
+          advisor: '/dashboard/advisor',
+          guide: '/dashboard/guide',
+          instructor: '/dashboard/instructor',
+          traveller: '/dashboard/traveller',
+        };
+        navigate(rolePaths[role] || '/dashboard/traveller', { replace: true });
       } else {
         toast.error(result.error);
       }

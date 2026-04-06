@@ -1,5 +1,5 @@
 
-import React, { useMemo } from "react";
+import React, { useMemo, useCallback } from "react";
 import { Link } from "react-router-dom";
 import DashboardLayout from "@/components/Layout/DashboardLayout";
 import StatCard from "@/components/Layout/StatCard";
@@ -19,14 +19,23 @@ import {
 import { useSampleDataStore } from "@/store/sampleData";
 import { useAuthStore } from "@/store/auth";
 
+// Demo fallback: sample data uses hardcoded IDs; if no match for real user, show traveller demo data
+const DEMO_TRAVELLER_ID = '4';
+
 export default function TravellerDashboard() {
   const { user } = useAuthStore();
   const { activities, places, bookings } = useSampleDataStore();
-  
-  // Get user's bookings (mock - filter by current user)
-  const userBookings = useMemo(() => {
-    return bookings.filter(booking => booking.userId === user?.id);
+
+  // Use real user ID if it matches sample data, else fall back to demo traveller
+  const effectiveUserId = useMemo(() => {
+    const hasData = bookings.some(b => b.userId === user?.id);
+    return hasData ? user?.id : DEMO_TRAVELLER_ID;
   }, [bookings, user?.id]);
+
+  // Get user's bookings
+  const userBookings = useMemo(() => {
+    return bookings.filter(booking => booking.userId === effectiveUserId);
+  }, [bookings, effectiveUserId]);
 
   // Calculate stats
   const stats = useMemo(() => {
@@ -46,40 +55,36 @@ export default function TravellerDashboard() {
   }, [userBookings, activities]);
 
   const metrics = [
-  { 
-    icon: MapPin, 
-    label: "Upcoming Trips", 
-    value: stats.upcomingTrips.toString(),
-    trend: { direction: "up", value: "+2", period: "this month" },
-    color: "primary",
-    variant: "gradient",
-    to: "/account/bookings"
-  },
-  { 
-    icon: Calendar, 
-    label: "Total Bookings", 
-    value: stats.totalBookings.toString(),
-    trend: { direction: "up", value: "+3" },
-    color: "success",
-    variant: "gradient"
-  },
-  { 
-    icon: DollarSign, 
-    label: "Total Spent", 
-    value: `₹${stats.totalSpent.toLocaleString()}`,
-    trend: { direction: "up", value: "+12%" },
-    color: "warning",
-    variant: "gradient"
-  },
-  { 
-    icon: Star, 
-    label: "Places Visited", 
-    value: stats.placesVisited.toString(),
-    trend: { direction: "up", value: "+2" },
-    color: "purple",
-    variant: "gradient"
-  },
-];
+    {
+      icon: MapPin,
+      label: "Upcoming Trips",
+      value: stats.upcomingTrips.toString(),
+      trend: { direction: "up", value: "+2" },
+      color: "primary",
+      to: "/account/bookings",
+    },
+    {
+      icon: Calendar,
+      label: "Total Bookings",
+      value: stats.totalBookings.toString(),
+      trend: { direction: "up", value: "+3" },
+      color: "success",
+    },
+    {
+      icon: DollarSign,
+      label: "Total Spent",
+      value: `₹${stats.totalSpent.toLocaleString()}`,
+      trend: { direction: "up", value: "+12%" },
+      color: "warning",
+    },
+    {
+      icon: Star,
+      label: "Places Visited",
+      value: stats.placesVisited.toString(),
+      trend: { direction: "up", value: "+2" },
+      color: "purple",
+    },
+  ];
 
   // Featured activities for discovery
   const featuredActivities = useMemo(() => {
@@ -103,7 +108,7 @@ export default function TravellerDashboard() {
       
       {/* Welcome Section */}
       <div className="mb-8 p-6 bg-gradient-to-r from-primary-600 to-blue-600 rounded-2xl text-white">
-        <h1 className="text-2xl font-bold mb-2">Welcome back, {user?.name}! 🌟</h1>
+        <h1 className="text-2xl font-bold mb-2">Welcome back, {user?.name}!</h1>
         <p className="opacity-90">Ready for your next adventure? Discover amazing experiences waiting for you.</p>
       </div>
 
@@ -127,8 +132,8 @@ export default function TravellerDashboard() {
                   <Calendar className="h-5 w-5" />
                   Recent Bookings
                 </h2>
-                <Link 
-                  to="/traveller/bookings" 
+                <Link
+                  to="/account/bookings"
                   className="text-sm text-primary-600 hover:text-primary-700 dark:text-primary-400 font-medium"
                 >
                   View All
@@ -287,8 +292,8 @@ export default function TravellerDashboard() {
                   </div>
                 </Link>
                 
-                <Link 
-                  to="/traveller/bookings"
+                <Link
+                  to="/account/bookings"
                   className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
                 >
                   <div className="w-10 h-10 bg-green-100 dark:bg-green-900/20 rounded-lg flex items-center justify-center">
@@ -299,9 +304,9 @@ export default function TravellerDashboard() {
                     <div className="text-sm text-gray-600 dark:text-gray-400">View your trips</div>
                   </div>
                 </Link>
-                
-                <Link 
-                  to="/traveller/wishlist"
+
+                <Link
+                  to="/account/wishlist"
                   className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
                 >
                   <div className="w-10 h-10 bg-red-100 dark:bg-red-900/20 rounded-lg flex items-center justify-center">

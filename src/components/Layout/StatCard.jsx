@@ -26,6 +26,10 @@ const COLORS = {
     chip: "bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-300",
     icon: "text-amber-600 dark:text-amber-400",
   },
+  purple: {
+    chip: "bg-purple-50 text-purple-700 dark:bg-purple-900/20 dark:text-purple-300",
+    icon: "text-purple-600 dark:text-purple-400",
+  },
   neutral: {
     chip: "bg-gray-100 text-gray-700 dark:bg-gray-800/50 dark:text-gray-300",
     icon: "text-gray-600 dark:text-gray-400",
@@ -38,7 +42,7 @@ const SIZES = {
   lg: { pad: "p-5", label: "text-sm", value: "text-3xl", iconBox: "w-12 h-12", icon: "h-6 w-6" },
 };
 
-export default function StatCard({
+function StatCard({
   icon: Icon,
   label,
   value,
@@ -100,3 +104,5 @@ export default function StatCard({
     Content
   );
 }
+
+export default React.memo(StatCard);

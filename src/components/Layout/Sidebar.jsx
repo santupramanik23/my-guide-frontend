@@ -94,7 +94,7 @@ const COMMON_ACTIONS = [
   { to: "/help", label: "Help & Support", icon: HelpCircle },
 ];
 
-export default function Sidebar({ 
+function Sidebar({
   role = "traveller", 
   variant = "light",
   className = "",
@@ -325,3 +325,5 @@ export default function Sidebar({
     </>
   );
 }
+
+export default React.memo(Sidebar);

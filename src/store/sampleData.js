@@ -455,11 +455,21 @@ export const USERS = [
 
 // Sample bookings
 export const BOOKINGS = [
-  { id: '1', userId: '1', activityId: '1', status: 'confirmed', totalAmount: 699, bookingDate: new Date('2024-03-15'), createdAt: new Date('2024-03-10') },
-  { id: '2', userId: '2', activityId: '6', status: 'confirmed', totalAmount: 999, bookingDate: new Date('2024-03-18'), createdAt: new Date('2024-03-12') },
-  { id: '3', userId: '3', activityId: '3', status: 'pending', totalAmount: 899, bookingDate: new Date('2024-03-20'), createdAt: new Date('2024-03-14') },
-  { id: '4', userId: '1', activityId: '5', status: 'confirmed', totalAmount: 499, bookingDate: new Date('2024-03-22'), createdAt: new Date('2024-03-16') },
-  
+  { id: '1', userId: '1', activityId: '1', status: 'confirmed', totalAmount: 699, bookingDate: new Date('2024-03-15'), createdAt: new Date('2024-03-10'), paymentId: 'pay_001', paymentMethod: 'UPI' },
+  { id: '2', userId: '2', activityId: '6', status: 'confirmed', totalAmount: 999, bookingDate: new Date('2024-03-18'), createdAt: new Date('2024-03-12'), paymentId: 'pay_002', paymentMethod: 'Card' },
+  { id: '3', userId: '3', activityId: '3', status: 'pending', totalAmount: 899, bookingDate: new Date('2024-03-20'), createdAt: new Date('2024-03-14'), paymentId: null, paymentMethod: null },
+  { id: '4', userId: '1', activityId: '5', status: 'confirmed', totalAmount: 499, bookingDate: new Date('2024-03-22'), createdAt: new Date('2024-03-16'), paymentId: 'pay_004', paymentMethod: 'Net Banking' },
+  { id: '5', userId: '4', activityId: '2', status: 'confirmed', totalAmount: 899, bookingDate: new Date('2024-04-10'), createdAt: new Date('2024-04-05'), paymentId: 'pay_005', paymentMethod: 'UPI' },
+  { id: '6', userId: '4', activityId: '7', status: 'confirmed', totalAmount: 649, bookingDate: new Date('2024-04-20'), createdAt: new Date('2024-04-14'), paymentId: 'pay_006', paymentMethod: 'Card' },
+  { id: '7', userId: '4', activityId: '15', status: 'confirmed', totalAmount: 549, bookingDate: new Date('2024-05-05'), createdAt: new Date('2024-04-28'), paymentId: 'pay_007', paymentMethod: 'UPI' },
+  { id: '8', userId: '4', activityId: '18', status: 'cancelled', totalAmount: 599, bookingDate: new Date('2024-05-15'), createdAt: new Date('2024-05-08'), paymentId: 'pay_008', paymentMethod: 'Card' },
+];
+
+// Sample reviews
+export const REVIEWS = [
+  { id: '1', userId: '4', activityId: '2', bookingId: '5', rating: 5, title: 'Absolutely Breathtaking!', comment: 'The sunrise photo tour at Howrah Bridge was incredible. Our guide was knowledgeable and the lighting was perfect. Highly recommend!', createdAt: new Date('2024-04-12'), helpful: 8 },
+  { id: '2', userId: '4', activityId: '7', bookingId: '6', rating: 4, title: 'Peaceful and Spiritual', comment: 'Visiting Dakshineswar Kali Temple was a beautiful experience. The guide explained the history very well. Could have been a bit longer.', createdAt: new Date('2024-04-22'), helpful: 5 },
+  { id: '3', userId: '4', activityId: '15', bookingId: '7', rating: 5, title: 'Perfect Morning Escape', comment: 'The morning nature walk at Rabindra Sarobar was so refreshing. Great way to start the day. The guide was punctual and friendly.', createdAt: new Date('2024-05-07'), helpful: 12 },
 ];
 
 // Demo data store using Zustand
@@ -468,6 +478,7 @@ export const useSampleDataStore = create((set, get) => ({
   activities: ACTIVITIES,
   users: USERS,
   bookings: BOOKINGS,
+  reviews: REVIEWS,
 
   // Places management
   addPlace: (place) => set((state) => ({

@@ -26,10 +26,16 @@ const Signup = lazy(() => import("@/pages/auth/Signup"));
 const BookingFlow = lazy(() => import("@/pages/booking/BookingFlow"));
 const BookingConfirm = lazy(() => import("@/pages/booking/BookingConfirm"));
 
+/* ---------- Settings & Help ---------- */
+const Settings = lazy(() => import("@/pages/settings/Settings"));
+const Help = lazy(() => import("@/pages/help/Help"));
+
 /* ---------- Account pages ---------- */
 const MyBookings = lazy(() => import("@/pages/account/MyBookings"));
 const Wishlist = lazy(() => import("@/pages/account/Wishlist"));
 const Profile = lazy(() => import("@/pages/account/Profile"));
+const MyReviews = lazy(() => import("@/pages/account/MyReviews"));
+const PaymentHistory = lazy(() => import("@/pages/account/PaymentHistory"));
 
 /* ---------- Dashboards ---------- */
 const TravellerDashboard = lazy(() => import("@/pages/dashboards/TravellerDashboard"));
@@ -160,8 +166,8 @@ export default function Router() {
           <Route path="bookings" element={<MyBookings />} />
           <Route path="wishlist" element={<Wishlist />} />
           <Route path="profile" element={<Profile />} />
-          <Route path="reviews" element={<ComingSoon title="My Reviews" />} />
-          <Route path="payments" element={<ComingSoon title="Payment History" />} />
+          <Route path="reviews" element={<MyReviews />} />
+          <Route path="payments" element={<PaymentHistory />} />
         </Route>
 
         {/* ---------- Booking confirmation (protected) ---------- */}
@@ -425,10 +431,10 @@ export default function Router() {
 
         {/* ---------- Common routes ---------- */}
         <Route path="/settings" element={<ProtectedRoute />}>
-          <Route index element={<ComingSoon title="Settings" />} />
+          <Route index element={<Settings />} />
         </Route>
 
-        <Route path="/help" element={<ComingSoon title="Help & Support" />} />
+        <Route path="/help" element={<Help />} />
 
         {/* ---------- 404 ---------- */}
         <Route path="*" element={<NotFound />} />
